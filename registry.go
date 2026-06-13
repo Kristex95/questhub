@@ -1,13 +1,13 @@
 package main
 
 type QuestRegistry struct {
-    quests map[string]*Quest
+	quests map[string]*Quest
 }
 
 func NewQuestRegistry() *QuestRegistry {
-    return &QuestRegistry{
-       quests: make(map[string]*Quest),
-    }
+	return &QuestRegistry{
+		quests: make(map[string]*Quest),
+	}
 }
 
 func (qr *QuestRegistry) AddQuest(quest *Quest) bool {
@@ -48,7 +48,7 @@ func (qr *QuestRegistry) CountQuests() int {
 
 func (qr *QuestRegistry) FindByDifficulty(min, max int) []*Quest {
 	validQuests := make([]*Quest, 0, qr.CountQuests())
-	for _, q := range qr.ListQuests(){
+	for _, q := range qr.ListQuests() {
 		if q.Difficulty >= min && q.Difficulty <= max {
 			validQuests = append(validQuests, q)
 		}

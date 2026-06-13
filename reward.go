@@ -3,28 +3,28 @@ package main
 import "fmt"
 
 type Reward struct {
-    ID       string
-    Title    string
-    XPAmount int
-    Rarity   string
+	ID       string
+	Title    string
+	XPAmount int
+	Rarity   string
 }
 
 func NewReward(id, title string, XPAmount int, rarity string) *Reward {
-    validRarities := map[string]bool{
-       "common":    true,
-       "rare":      true,
-       "epic":      true,
-       "legendary": true,
-    }
-    if !validRarities[rarity] {
-       rarity = "common"
-    }
-    return &Reward{
-       ID:       id,
-       Title:    title,
-       XPAmount: XPAmount,
-       Rarity:   rarity,
-    }
+	validRarities := map[string]bool{
+		"common":    true,
+		"rare":      true,
+		"epic":      true,
+		"legendary": true,
+	}
+	if !validRarities[rarity] {
+		rarity = "common"
+	}
+	return &Reward{
+		ID:       id,
+		Title:    title,
+		XPAmount: XPAmount,
+		Rarity:   rarity,
+	}
 }
 
 func (r *Reward) String() string {

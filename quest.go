@@ -3,71 +3,71 @@ package main
 import "fmt"
 
 type Quest struct {
-    ID          string
-    Title       string
-    Description string
-    Difficulty  int
-    isActive    bool
-    XPReward    int
-    Tasks       []*Task
+	ID          string
+	Title       string
+	Description string
+	Difficulty  int
+	isActive    bool
+	XPReward    int
+	Tasks       []*Task
 }
 
 func NewQuest(id, title, description string, difficulty int) *Quest {
-    if difficulty < 1 {
-       difficulty = 1
-    }
-    if difficulty > 10 {
-       difficulty = 10
-    }
-    return &Quest{
-       ID:          id,
-       Title:       title,
-       Description: description,
-	   Difficulty:  difficulty,
-       XPReward:    difficulty * 100,
-       isActive:    true,
-       Tasks:       make([]*Task, 0),
-    }
+	if difficulty < 1 {
+		difficulty = 1
+	}
+	if difficulty > 10 {
+		difficulty = 10
+	}
+	return &Quest{
+		ID:          id,
+		Title:       title,
+		Description: description,
+		Difficulty:  difficulty,
+		XPReward:    difficulty * 100,
+		isActive:    true,
+		Tasks:       make([]*Task, 0),
+	}
 }
 
 func (q *Quest) AddTask(task *Task) {
-    q.Tasks = append(q.Tasks, task)
+	q.Tasks = append(q.Tasks, task)
 }
 
 func (q *Quest) CompleteTask(taskId string) bool {
-    for i := range q.Tasks {
-       if q.Tasks[i].ID == taskId {
-          q.Tasks[i].isCompleted = true
-          return true
-       }
-    }
-    return false
+	for i := range q.Tasks {
+		if q.Tasks[i].ID == taskId {
+			q.Tasks[i].isCompleted = true
+			return true
+		}
+	}
+	return false
 }
 
 func (q *Quest) Summary() string {
-    completed := 0
-    for _, i := range q.Tasks {
-       if i.isCompleted {
-          completed++
-       }
-    }
-    status := "active"
-    if !q.isActive {
-       status = "inactive"
-    }
-    return fmt.Sprintf("[%s] %s | Difficulty: %d | Progress : %d/%d | XP: %d | %s", q.ID, q.Title, q.Difficulty, completed, len(q.Tasks), q.TotalXP(), status)
+	completed := 0
+	for _, i := range q.Tasks {
+		if i.isCompleted {
+			completed++
+		}
+	}
+	status := "active"
+	if !q.isActive {
+		status = "inactive"
+	}
+	return fmt.Sprintf("[%s] %s | Difficulty: %d | Progress : %d/%d | XP: %d | %s", q.ID, q.Title, q.Difficulty, completed, len(q.Tasks), q.TotalXP(), status)
 
 }
 
 func (q *Quest) TotalXP() int {
-    total := q.XPReward
-    for _, i := range q.Tasks {
-       total += i.XPReward
-       if i.Reward != nil {
-          total += i.Reward.XPAmount
-       }
-    }
-    return total
+	total := q.XPReward
+	for _, i := range q.Tasks {
+		total += i.XPReward
+		if i.Reward != nil {
+			total += i.Reward.XPAmount
+		}
+	}
+	return total
 }
 
 func (q *Quest) Activate() {
@@ -106,7 +106,6 @@ func (q *Quest) GetProgressPercentage() float64 {
 	}
 	return float64(completedCount) / float64(totalCount) * 100
 }
-
 
 func (q *Quest) IsCompleted() bool {
 	for _, task := range q.Tasks {

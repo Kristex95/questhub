@@ -12,7 +12,7 @@ func main() {
 	r1 := NewReward("r1", "Bronze Sword", 50, "common")
 	r2 := NewReward("r2", "Silver Blade", 120, "rare")
 	r3 := NewReward("r3", "Assassin Hood", 300, "epic")
-	
+
 	fmt.Println(r1.String())
 	fmt.Println(r2.String())
 	fmt.Println(r3.String())
@@ -79,12 +79,6 @@ func main() {
 		fmt.Println(q.Summary())
 	}
 
-
-
-
-
-
-
 	// --- PART 7 ---
 	fmt.Println("\nPart 7. Additional tasks")
 	fmt.Println("- q2 Deactivation")
@@ -112,21 +106,15 @@ func main() {
 	falseQuest := NewQuest("q3", "False quest", "False", 1)
 	fmt.Println("Trying to add duplicate quest:", reg.AddQuest(falseQuest))
 
-
-
-
-
-
-
 	// --- PART 8 ---
-	// FindByDifficulty 
+	// FindByDifficulty
 	fmt.Println("\nQuests by difficulty (2..6):")
 	filtered := reg.FindByDifficulty(2, 6)
 	for _, q := range filtered {
 		fmt.Println(q.Summary())
 	}
 
-	// SortedByDifficulty 
+	// SortedByDifficulty
 	fmt.Println("\nSorted by difficulty:")
 	sorted := reg.SortedByDifficulty()
 	for _, q := range sorted {

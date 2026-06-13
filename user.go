@@ -3,22 +3,22 @@ package main
 import "fmt"
 
 type User struct {
-	ID       string
-	Username string
-	Email    string
-	Level    int
-	XP       int
+	ID              string
+	Username        string
+	Email           string
+	Level           int
+	XP              int
 	CompletedQuests []*Quest
 	TotalXPEarned   int
 }
 
 func NewUser(id, username, email string) *User {
 	return &User{
-		ID:       id,
-		Username: username,
-		Email:    email,
-		Level:    1,
-		XP:       0,
+		ID:            id,
+		Username:      username,
+		Email:         email,
+		Level:         1,
+		XP:            0,
 		TotalXPEarned: 0,
 	}
 }
