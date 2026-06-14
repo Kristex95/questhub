@@ -1,4 +1,4 @@
-package main
+package domain
 
 import "fmt"
 
@@ -9,7 +9,13 @@ type Reward struct {
 	Rarity   string
 }
 
-func NewReward(id, title string, XPAmount int, rarity string) *Reward {
+func NewReward(id, title string, XPAmount int, rarity string) (*Reward, error) {
+	if title == "" {
+		return nil, &ValidationError{Field: "title", Message: "must not be empty"}
+	}
+	if XPAmount <= 0 {
+		return nil, &ValidationError{Field: "XPAMount", Message: "must be greater than 0"}
+	}
 	validRarities := map[string]bool{
 		"common":    true,
 		"rare":      true,
@@ -24,7 +30,8 @@ func NewReward(id, title string, XPAmount int, rarity string) *Reward {
 		Title:    title,
 		XPAmount: XPAmount,
 		Rarity:   rarity,
-	}
+	},
+	nil
 }
 
 func (r *Reward) String() string {

@@ -1,4 +1,4 @@
-package main
+package domain
 
 type QuestRegistry struct {
 	quests map[string]*Quest

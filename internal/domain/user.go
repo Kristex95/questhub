@@ -1,4 +1,4 @@
-package main
+package domain
 
 import "fmt"
 
@@ -12,15 +12,19 @@ type User struct {
 	TotalXPEarned   int
 }
 
-func NewUser(id, username, email string) *User {
-	return &User{
-		ID:            id,
-		Username:      username,
-		Email:         email,
-		Level:         1,
-		XP:            0,
-		TotalXPEarned: 0,
+func NewUser(id, username, email string) (*User, error) {
+	if len(username) < 2 {
+		return nil, &ValidationError{Field: "username", Message: "must be longer than 2 symbols"}
 	}
+	return &User{
+			ID:            id,
+			Username:      username,
+			Email:         email,
+			Level:         1,
+			XP:            0,
+			TotalXPEarned: 0,
+		},
+		nil
 }
 
 func (u *User) AddXP(amount int) {
@@ -52,14 +56,15 @@ func (u *User) LevelUp() {
 	u.XP = 0
 }
 
-func (u *User) CompleteQuest(quest *Quest) {
+func (u *User) CompleteQuest(quest *Quest) error {
 	completed := quest.IsCompleted()
 	if !completed {
 		fmt.Printf("Quest %s is not completed\n", quest.Title)
-		return
+		return fmt.Errorf("Quest %s is not completed\n", quest.Title)
 	}
 	u.CompletedQuests = append(u.CompletedQuests, quest)
 	u.AddXP(quest.TotalXP())
+	return nil
 }
 
 func (u *User) PrintInfo() {

@@ -1,4 +1,4 @@
-package main
+package domain
 
 import "fmt"
 
@@ -12,36 +12,40 @@ type Quest struct {
 	Tasks       []*Task
 }
 
-func NewQuest(id, title, description string, difficulty int) *Quest {
-	if difficulty < 1 {
-		difficulty = 1
+func NewQuest(id, title, description string, difficulty int) (*Quest, error) {
+	if len(title) < 3 {
+		return nil, &ValidationError{Field: "title", Message: "must be at least 3 characters"}
 	}
-	if difficulty > 10 {
-		difficulty = 10
+	if description == "" {
+		return nil, &ValidationError{Field: "description", Message: "must not be empty"}
+	}
+	if difficulty < 1 || difficulty > 10 {
+		return nil, &ValidationError{Field: "difficulty", Message: "must be between 1 and 10"}
 	}
 	return &Quest{
-		ID:          id,
-		Title:       title,
-		Description: description,
-		Difficulty:  difficulty,
-		XPReward:    difficulty * 100,
-		isActive:    true,
-		Tasks:       make([]*Task, 0),
-	}
+			ID:          id,
+			Title:       title,
+			Description: description,
+			Difficulty:  difficulty,
+			XPReward:    difficulty * 100,
+			isActive:    true,
+			Tasks:       make([]*Task, 0),
+		},
+		nil
 }
 
 func (q *Quest) AddTask(task *Task) {
 	q.Tasks = append(q.Tasks, task)
 }
 
-func (q *Quest) CompleteTask(taskId string) bool {
+func (q *Quest) CompleteTask(taskId string) error {
 	for i := range q.Tasks {
 		if q.Tasks[i].ID == taskId {
 			q.Tasks[i].isCompleted = true
-			return true
+			return nil
 		}
 	}
-	return false
+	return &NotFoundError{Entity: "task", ID: taskId}
 }
 
 func (q *Quest) Summary() string {
