@@ -2,7 +2,7 @@ package service
 
 import (
 	"errors"
-	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -12,7 +12,7 @@ import (
 // Mocks
 // Quest Mock
 type MockQuestRepository struct {
-	data      map[string]domain.Quest
+	data      map[int]domain.Quest
 	counter   int
 	CreateErr error
 	GetErr    error
@@ -22,7 +22,7 @@ type MockQuestRepository struct {
 }
 
 func NewMockQuestRepository() *MockQuestRepository {
-	return &MockQuestRepository{data: make(map[string]domain.Quest)}
+	return &MockQuestRepository{data: make(map[int]domain.Quest)}
 }
 
 func (m *MockQuestRepository) Create(quest domain.Quest) (domain.Quest, error) {
@@ -30,18 +30,18 @@ func (m *MockQuestRepository) Create(quest domain.Quest) (domain.Quest, error) {
 		return domain.Quest{}, m.CreateErr
 	}
 	m.counter++
-	quest.ID = fmt.Sprintf("quest-%d", m.counter)
+	quest.ID = m.counter
 	m.data[quest.ID] = quest
 	return quest, nil
 }
 
-func (m *MockQuestRepository) Get(id string) (domain.Quest, error) {
+func (m *MockQuestRepository) Get(id int) (domain.Quest, error) {
 	if m.GetErr != nil {
 		return domain.Quest{}, m.GetErr
 	}
 	quest, ok := m.data[id]
 	if !ok {
-		return domain.Quest{}, &domain.NotFoundError{Entity: "Quest", ID: id}
+		return domain.Quest{}, &domain.NotFoundError{Entity: "Quest", Value: strconv.Itoa(id)}
 	}
 	return quest, nil
 }
@@ -57,24 +57,24 @@ func (m *MockQuestRepository) GetAll() ([]domain.Quest, error) {
 	return quests, nil
 }
 
-func (m *MockQuestRepository) Update(questID string, updatedQuest domain.Quest) (domain.Quest, error) {
+func (m *MockQuestRepository) Update(questID int, updatedQuest domain.Quest) (domain.Quest, error) {
 	if m.UpdateErr != nil {
 		return domain.Quest{}, m.UpdateErr
 	}
 	if _, ok := m.data[questID]; !ok {
-		return domain.Quest{}, &domain.NotFoundError{Entity: "Quest", ID: questID}
+		return domain.Quest{}, &domain.NotFoundError{Entity: "Quest", Value: strconv.Itoa(questID)}
 	}
 	updatedQuest.ID = questID
 	m.data[questID] = updatedQuest
 	return updatedQuest, nil
 }
 
-func (m *MockQuestRepository) Delete(questID string) error {
+func (m *MockQuestRepository) Delete(questID int) error {
 	if m.DeleteErr != nil {
 		return m.DeleteErr
 	}
 	if _, ok := m.data[questID]; !ok {
-		return &domain.NotFoundError{Entity: "Quest", ID: questID}
+		return &domain.NotFoundError{Entity: "Quest", Value: strconv.Itoa(questID)}
 	}
 	delete(m.data, questID)
 	return nil
@@ -82,7 +82,7 @@ func (m *MockQuestRepository) Delete(questID string) error {
 
 // Task Mock
 type MockTaskRepository struct {
-	data          map[string]domain.Task
+	data          map[int]domain.Task
 	counter       int
 	CreateErr     error
 	GetErr        error
@@ -93,7 +93,7 @@ type MockTaskRepository struct {
 }
 
 func NewMockTaskRepository() *MockTaskRepository {
-	return &MockTaskRepository{data: make(map[string]domain.Task)}
+	return &MockTaskRepository{data: make(map[int]domain.Task)}
 }
 
 func (m *MockTaskRepository) Create(task domain.Task) (domain.Task, error) {
@@ -101,18 +101,18 @@ func (m *MockTaskRepository) Create(task domain.Task) (domain.Task, error) {
 		return domain.Task{}, m.CreateErr
 	}
 	m.counter++
-	task.ID = fmt.Sprintf("task-%d", m.counter)
+	task.ID = m.counter
 	m.data[task.ID] = task
 	return task, nil
 }
 
-func (m *MockTaskRepository) Get(id string) (domain.Task, error) {
+func (m *MockTaskRepository) Get(id int) (domain.Task, error) {
 	if m.GetErr != nil {
 		return domain.Task{}, m.GetErr
 	}
 	task, ok := m.data[id]
 	if !ok {
-		return domain.Task{}, &domain.NotFoundError{Entity: "Task", ID: id}
+		return domain.Task{}, &domain.NotFoundError{Entity: "Task", Value: strconv.Itoa(id)}
 	}
 	return task, nil
 }
@@ -128,7 +128,7 @@ func (m *MockTaskRepository) GetAll() ([]domain.Task, error) {
 	return tasks, nil
 }
 
-func (m *MockTaskRepository) GetByQuestID(questID string) ([]*domain.Task, error) {
+func (m *MockTaskRepository) GetByQuestID(questID int) ([]*domain.Task, error) {
 	if m.GetByQuestErr != nil {
 		return nil, m.GetByQuestErr
 	}
@@ -142,24 +142,24 @@ func (m *MockTaskRepository) GetByQuestID(questID string) ([]*domain.Task, error
 	return tasks, nil
 }
 
-func (m *MockTaskRepository) Update(taskID string, updatedTask domain.Task) (domain.Task, error) {
+func (m *MockTaskRepository) Update(taskID int, updatedTask domain.Task) (domain.Task, error) {
 	if m.UpdateErr != nil {
 		return domain.Task{}, m.UpdateErr
 	}
 	if _, ok := m.data[taskID]; !ok {
-		return domain.Task{}, &domain.NotFoundError{Entity: "Task", ID: taskID}
+		return domain.Task{}, &domain.NotFoundError{Entity: "Task", Value: strconv.Itoa(taskID)}
 	}
 	updatedTask.ID = taskID
 	m.data[taskID] = updatedTask
 	return updatedTask, nil
 }
 
-func (m *MockTaskRepository) Delete(taskID string) error {
+func (m *MockTaskRepository) Delete(taskID int) error {
 	if m.DeleteErr != nil {
 		return m.DeleteErr
 	}
 	if _, ok := m.data[taskID]; !ok {
-		return &domain.NotFoundError{Entity: "Task", ID: taskID}
+		return &domain.NotFoundError{Entity: "Task", Value: strconv.Itoa(taskID)}
 	}
 	delete(m.data, taskID)
 	return nil
@@ -167,7 +167,7 @@ func (m *MockTaskRepository) Delete(taskID string) error {
 
 // User Mock
 type MockUserRepository struct {
-	data             map[string]domain.User
+	data             map[int]domain.User
 	counter          int
 	CreateErr        error
 	GetErr           error
@@ -178,7 +178,7 @@ type MockUserRepository struct {
 }
 
 func NewMockUserRepository() *MockUserRepository {
-	return &MockUserRepository{data: make(map[string]domain.User)}
+	return &MockUserRepository{data: make(map[int]domain.User)}
 }
 
 func (m *MockUserRepository) Create(user domain.User) (domain.User, error) {
@@ -186,18 +186,18 @@ func (m *MockUserRepository) Create(user domain.User) (domain.User, error) {
 		return domain.User{}, m.CreateErr
 	}
 	m.counter++
-	user.ID = fmt.Sprintf("user-%d", m.counter)
+	user.ID = m.counter
 	m.data[user.ID] = user
 	return user, nil
 }
 
-func (m *MockUserRepository) Get(id string) (domain.User, error) {
+func (m *MockUserRepository) Get(id int) (domain.User, error) {
 	if m.GetErr != nil {
 		return domain.User{}, m.GetErr
 	}
 	user, ok := m.data[id]
 	if !ok {
-		return domain.User{}, &domain.NotFoundError{Entity: "User", ID: id}
+		return domain.User{}, &domain.NotFoundError{Entity: "User", Value: strconv.Itoa(id)}
 	}
 	return user, nil
 }
@@ -226,24 +226,24 @@ func (m *MockUserRepository) GetByUsername(username string) (*domain.User, error
 	return nil, &domain.NotFoundError{Entity: "User"}
 }
 
-func (m *MockUserRepository) Update(userID string, updatedUser domain.User) (domain.User, error) {
+func (m *MockUserRepository) Update(userID int, updatedUser domain.User) (domain.User, error) {
 	if m.UpdateErr != nil {
 		return domain.User{}, m.UpdateErr
 	}
 	if _, ok := m.data[userID]; !ok {
-		return domain.User{}, &domain.NotFoundError{Entity: "User", ID: userID}
+		return domain.User{}, &domain.NotFoundError{Entity: "User", Value: strconv.Itoa(userID)}
 	}
 	updatedUser.ID = userID
 	m.data[userID] = updatedUser
 	return updatedUser, nil
 }
 
-func (m *MockUserRepository) Delete(userID string) error {
+func (m *MockUserRepository) Delete(userID int) error {
 	if m.DeleteErr != nil {
 		return m.DeleteErr
 	}
 	if _, ok := m.data[userID]; !ok {
-		return &domain.NotFoundError{Entity: "User", ID: userID}
+		return &domain.NotFoundError{Entity: "User", Value: strconv.Itoa(userID)}
 	}
 	delete(m.data, userID)
 	return nil
@@ -258,9 +258,6 @@ func TestCreateQuest_Success(t *testing.T) {
 	}
 	if q == nil {
 		t.Fatal("expected quest not to be nil")
-	}
-	if q.ID == "" {
-		t.Errorf("expected non-empty quest ID")
 	}
 }
 
@@ -304,14 +301,14 @@ func TestAddTaskToQuest_Success(t *testing.T) {
 		t.Fatal("expected task not to be nil")
 	}
 	if task.QuestId != q.ID {
-		t.Errorf("expected task to be linked to quest %s, got %s", q.ID, task.QuestId)
+		t.Errorf("expected task to be linked to quest %d, got %d", q.ID, task.QuestId)
 	}
 }
 
 func TestAddTaskToQuest_QuestNotFound(t *testing.T) {
 	svc, _, _, _ := makeService()
 
-	_, err := svc.AddTaskToQuest("non-existent-quest-id", "Task 1", "Desc")
+	_, err := svc.AddTaskToQuest(999, "Task 1", "Desc")
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
@@ -337,7 +334,7 @@ func TestGetQuestTasks_Success(t *testing.T) {
 		t.Fatalf("expected 1 task, got %d", len(tasks))
 	}
 	if tasks[0].QuestId != q1.ID {
-		t.Errorf("expected task to belong to quest %s, got %s", q1.ID, tasks[0].QuestId)
+		t.Errorf("expected task to belong to quest %d, got %d", q1.ID, tasks[0].QuestId)
 	}
 }
 
@@ -383,7 +380,7 @@ func TestCompleteQuest_QuestNotFound(t *testing.T) {
 
 	u, _ := userRepo.Create(domain.User{Username: "Player1"})
 
-	err := svc.CompleteQuest("non-existent-quest", u.ID)
+	err := svc.CompleteQuest(999, u.ID)
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
@@ -397,7 +394,7 @@ func TestCompleteQuest_UserNotFound(t *testing.T) {
 
 	q, _ := questRepo.Create(domain.Quest{Title: "Q1", Description: "Desc", Difficulty: 1})
 
-	err := svc.CompleteQuest(q.ID, "non-existent-user")
+	err := svc.CompleteQuest(q.ID, 999)
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
@@ -429,7 +426,7 @@ func TestDeleteQuest_DeletesTasks(t *testing.T) {
 func TestDeleteQuest_QuestNotFound(t *testing.T) {
 	svc, _, _, _ := makeService()
 
-	err := svc.DeleteQuest("non-existent-quest")
+	err := svc.DeleteQuest(999)
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
@@ -455,7 +452,7 @@ func TestGetQuest_RepoError(t *testing.T) {
 	svc, questRepo, _, _ := makeService()
 	questRepo.GetErr = errors.New("read timeout")
 
-	_, err := svc.GetQuest("quest-1")
+	_, err := svc.GetQuest(999)
 	if err == nil {
 		t.Fatal("expected error from repository, got nil")
 	}

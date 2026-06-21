@@ -3,13 +3,13 @@ package domain
 import "fmt"
 
 type Reward struct {
-	ID       string
+	ID       int
 	Title    string
 	XPAmount int
 	Rarity   string
 }
 
-func NewReward(id, title string, XPAmount int, rarity string) (*Reward, error) {
+func NewReward(id int, title string, XPAmount int, rarity string) (*Reward, error) {
 	if title == "" {
 		return nil, &ValidationError{Field: "title", Message: "must not be empty"}
 	}

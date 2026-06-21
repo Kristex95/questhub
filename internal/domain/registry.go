@@ -1,12 +1,12 @@
 package domain
 
 type QuestRegistry struct {
-	quests map[string]*Quest
+	quests map[int]*Quest
 }
 
 func NewQuestRegistry() *QuestRegistry {
 	return &QuestRegistry{
-		quests: make(map[string]*Quest),
+		quests: make(map[int]*Quest),
 	}
 }
 
@@ -19,7 +19,7 @@ func (qr *QuestRegistry) AddQuest(quest *Quest) bool {
 	return false
 }
 
-func (qr *QuestRegistry) RemoveQuest(id string) bool {
+func (qr *QuestRegistry) RemoveQuest(id int) bool {
 	_, found := qr.GetQuestById(id)
 	if found {
 		delete(qr.quests, id)
@@ -28,7 +28,7 @@ func (qr *QuestRegistry) RemoveQuest(id string) bool {
 	return false
 }
 
-func (qr *QuestRegistry) GetQuestById(id string) (*Quest, bool) {
+func (qr *QuestRegistry) GetQuestById(id int) (*Quest, bool) {
 	quest, ok := qr.quests[id]
 	return quest, ok
 }

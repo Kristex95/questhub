@@ -16,11 +16,11 @@ var (
 
 type NotFoundError struct {
 	Entity string
-	ID     string
+	Value  string
 }
 
 func (e *NotFoundError) Error() string {
-	return fmt.Sprintf("%s with ID %s not found", e.Entity, e.ID)
+	return fmt.Sprintf("%s with Value %s not found", e.Entity, e.Value)
 }
 
 func (e *NotFoundError) Unwrap() error {

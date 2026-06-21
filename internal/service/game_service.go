@@ -11,7 +11,7 @@ type GameService struct {
 	quests       repository.QuestRepository
 	tasks        repository.TaskRepository
 	users        repository.UserRepository
-	activeQuests map[string]string // userID -> questID
+	activeQuests map[int]int // userID -> questID
 }
 
 func NewGameService(quests repository.QuestRepository, tasks repository.TaskRepository, users repository.UserRepository) *GameService {
@@ -19,11 +19,11 @@ func NewGameService(quests repository.QuestRepository, tasks repository.TaskRepo
 		quests:       quests,
 		tasks:        tasks,
 		users:        users,
-		activeQuests: make(map[string]string),
+		activeQuests: make(map[int]int),
 	}
 }
 
-func (service *GameService) StartQuest(userID, questID string) error {
+func (service *GameService) StartQuest(userID int, questID int) error {
 	if _, err := service.users.Get(userID); err != nil {
 		return fmt.Errorf("get user: %w", err)
 	}
@@ -32,7 +32,7 @@ func (service *GameService) StartQuest(userID, questID string) error {
 		return fmt.Errorf("get quest: %w", err)
 	}
 
-	if activeID, exists := service.activeQuests[userID]; exists && activeID != "" {
+	if _, exists := service.activeQuests[userID]; exists {
 		return fmt.Errorf("%w: user already has an active quest", domain.ErrAlreadyStarted)
 	}
 
@@ -40,10 +40,10 @@ func (service *GameService) StartQuest(userID, questID string) error {
 	return nil
 }
 
-func (service *GameService) CompleteTask(userID, taskID string) error {
+func (service *GameService) CompleteTask(userID, taskID int) error {
 	activeQuestID, exists := service.activeQuests[userID]
 
-	if !exists || activeQuestID == "" {
+	if !exists {
 		return fmt.Errorf("%w: user has no active quest", domain.ErrInvalidState)
 	}
 
@@ -86,10 +86,10 @@ func (service *GameService) CompleteTask(userID, taskID string) error {
 	return nil
 }
 
-func (service *GameService) GetProgress(userID string) (*domain.Progress, error) {
+func (service *GameService) GetProgress(userID int) (*domain.Progress, error) {
 	activeQuestID, hasActive := service.activeQuests[userID]
 
-	if !hasActive || activeQuestID == "" {
+	if !hasActive {
 		return nil, fmt.Errorf("%w: user has no active quest", domain.ErrNotFound)
 	}
 
@@ -116,9 +116,9 @@ func (service *GameService) GetProgress(userID string) (*domain.Progress, error)
 	}, nil
 }
 
-func (service *GameService) FinishQuest(userID string) (*domain.Reward, error) {
+func (service *GameService) FinishQuest(userID int) (*domain.Reward, error) {
 	activeQuestID, hasActive := service.activeQuests[userID]
-	if !hasActive || activeQuestID == "" {
+	if !hasActive {
 		return nil, fmt.Errorf("%w: user has no active quest to finish", domain.ErrInvalidState)
 	}
 
@@ -153,7 +153,7 @@ func (service *GameService) FinishQuest(userID string) (*domain.Reward, error) {
 	}
 
 	rewardTitle := fmt.Sprintf("Completed: %s", quest.Title)
-	reward, err := domain.NewReward("reward-"+activeQuestID, rewardTitle, xpReward, "common")
+	reward, err := domain.NewReward(activeQuestID, rewardTitle, xpReward, "common")
 	if err != nil {
 		return nil, fmt.Errorf("create reward: %w", err)
 	}

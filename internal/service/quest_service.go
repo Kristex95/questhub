@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+
 	"github.com/Kristex95/questhub/internal/domain"
 	"github.com/Kristex95/questhub/internal/repository"
 )
@@ -22,7 +23,7 @@ func NewQuestService(quests repository.QuestRepository, tasks repository.TaskRep
 
 func (service *QuestService) CreateQuest(title, description string, difficulty int) (*domain.Quest, error) {
 	incomingQuest, err := domain.NewQuest(
-		"",
+		0,
 		title,
 		description,
 		difficulty,
@@ -39,7 +40,7 @@ func (service *QuestService) CreateQuest(title, description string, difficulty i
 	return &resultQuest, nil
 }
 
-func (service *QuestService) GetQuest(id string) (*domain.Quest, error) {
+func (service *QuestService) GetQuest(id int) (*domain.Quest, error) {
 	quest, err := service.quests.Get(id)
 	if err != nil {
 		return nil, fmt.Errorf("get quest: %w", err)
@@ -61,7 +62,7 @@ func (service *QuestService) ListQuests() ([]*domain.Quest, error) {
 	return result, nil
 }
 
-func (service *QuestService) DeleteQuest(id string) error {
+func (service *QuestService) DeleteQuest(id int) error {
 	quest, err := service.quests.Get(id)
 	if err != nil {
 		return fmt.Errorf("get quest: %w", err)
@@ -85,13 +86,13 @@ func (service *QuestService) DeleteQuest(id string) error {
 	return nil
 }
 
-func (service *QuestService) AddTaskToQuest(questID, title, description string) (*domain.Task, error) {
+func (service *QuestService) AddTaskToQuest(questID int, title, description string) (*domain.Task, error) {
 	if _, err := service.quests.Get(questID); err != nil {
 		return nil, fmt.Errorf("get quest: %w", err)
 	}
 
 	task := domain.Task{
-		ID:          "",
+		ID:          0,
 		QuestId:     questID,
 		Title:       title,
 		Description: description,
@@ -105,7 +106,7 @@ func (service *QuestService) AddTaskToQuest(questID, title, description string) 
 	return &created, nil
 }
 
-func (service *QuestService) GetQuestTasks(questID string) ([]*domain.Task, error) {
+func (service *QuestService) GetQuestTasks(questID int) ([]*domain.Task, error) {
 	if _, err := service.quests.Get(questID); err != nil {
 		return nil, fmt.Errorf("get quest: %w", err)
 	}
@@ -118,7 +119,7 @@ func (service *QuestService) GetQuestTasks(questID string) ([]*domain.Task, erro
 	return tasks, nil
 }
 
-func (service *QuestService) CompleteQuest(questID, userID string) error {
+func (service *QuestService) CompleteQuest(questID, userID int) error {
 	quest, err := service.quests.Get(questID)
 	if err != nil {
 		return fmt.Errorf("get quest: %w", err)

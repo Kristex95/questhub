@@ -10,54 +10,36 @@ import (
 func TestNewTask_Validation(t *testing.T) {
 	tests := []struct {
 		name     string
-		id       string
+		id       int
 		title    string
 		xp       int
-		questID  string
+		questID  int
 		wantErr  bool
 		wantField string
 	}{
 		{
 			name:    "valid task",
-			id:      "t1",
+			id:      1,
 			title:   "Task 1",
 			xp:      100,
-			questID: "q1",
+			questID: 1,
 			wantErr: false,
 		},
 		{
 			name:     "empty title",
-			id:       "t1",
+			id:       1,
 			title:    "",
 			xp:       100,
-			questID:  "q1",
+			questID:  1,
 			wantErr:  true,
 			wantField: "title",
 		},
 		{
-			name:     "empty id",
-			id:       "",
-			title:    "Task",
-			xp:       100,
-			questID:  "q1",
-			wantErr:  true,
-			wantField: "id",
-		},
-		{
-			name:     "empty questID",
-			id:       "t1",
-			title:    "Task",
-			xp:       100,
-			questID:  "",
-			wantErr:  true,
-			wantField: "questId",
-		},
-		{
 			name:    "negative xp normalized",
-			id:      "t1",
+			id:      1,
 			title:   "Task",
 			xp:      -10,
-			questID: "q1",
+			questID: 1,
 			wantErr: false,
 		},
 	}

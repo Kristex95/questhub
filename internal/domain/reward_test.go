@@ -11,7 +11,7 @@ import (
 func TestNewReward_Validation(t *testing.T) {
 	tests := []struct {
 		name      string
-		id        string
+		id        int
 		title     string
 		xp        int
 		rarity    string
@@ -20,7 +20,7 @@ func TestNewReward_Validation(t *testing.T) {
 	}{
 		{
 			name:    "valid reward",
-			id:      "r1",
+			id:      1,
 			title:   "Sword",
 			xp:      100,
 			rarity:  "rare",
@@ -28,7 +28,7 @@ func TestNewReward_Validation(t *testing.T) {
 		},
 		{
 			name:      "empty title",
-			id:        "r1",
+			id:        1,
 			title:     "",
 			xp:        100,
 			rarity:    "rare",
@@ -37,7 +37,7 @@ func TestNewReward_Validation(t *testing.T) {
 		},
 		{
 			name:      "xp must be > 0",
-			id:        "r1",
+			id:        1,
 			title:     "Sword",
 			xp:        0,
 			rarity:    "rare",
@@ -46,7 +46,7 @@ func TestNewReward_Validation(t *testing.T) {
 		},
 		{
 			name:    "invalid rarity defaults to common",
-			id:      "r1",
+			id:      1,
 			title:   "Sword",
 			xp:      100,
 			rarity:  "invalid",
@@ -76,7 +76,7 @@ func TestNewReward_Validation(t *testing.T) {
 
 func TestNewReward(t *testing.T) {
 	type args struct {
-		id       string
+		id       int
 		title    string
 		XPAmount int
 		rarity   string
@@ -89,25 +89,25 @@ func TestNewReward(t *testing.T) {
 	}{
 		{
 			name: "successfully create common reward",
-			args: args{id: "rew-1", title: "Copper Coins", XPAmount: 50, rarity: "common"},
-			want: &Reward{ID: "rew-1", Title: "Copper Coins", XPAmount: 50, Rarity: "common"},
+			args: args{id: 1, title: "Copper Coins", XPAmount: 50, rarity: "common"},
+			want: &Reward{ID: 1, Title: "Copper Coins", XPAmount: 50, Rarity: "common"},
 			wantErr: false,
 		},
 		{
 			name: "successfully create epic reward",
-			args: args{id: "rew-2", title: "Dragon Scale", XPAmount: 500, rarity: "epic"},
-			want: &Reward{ID: "rew-2", Title: "Dragon Scale", XPAmount: 500, Rarity: "epic"},
+			args: args{id: 2, title: "Dragon Scale", XPAmount: 500, rarity: "epic"},
+			want: &Reward{ID: 2, Title: "Dragon Scale", XPAmount: 500, Rarity: "epic"},
 			wantErr: false,
 		},
 		{
 			name: "invalid rarity falls back to common",
-			args: args{id: "rew-3", title: "Rusty Key", XPAmount: 10, rarity: "super-rare"},
-			want: &Reward{ID: "rew-3", Title: "Rusty Key", XPAmount: 10, Rarity: "common"},
+			args: args{id: 3, title: "Rusty Key", XPAmount: 10, rarity: "super-rare"},
+			want: &Reward{ID: 3, Title: "Rusty Key", XPAmount: 10, Rarity: "common"},
 			wantErr: false,
 		},
 		{
 			name: "fail with zero XP amount",
-			args: args{id: "rew-4", title: "Ghost Gift", XPAmount: 0, rarity: "legendary"},
+			args: args{id: 4, title: "Ghost Gift", XPAmount: 0, rarity: "legendary"},
 			want: nil,
 			wantErr: true,
 		},
@@ -128,7 +128,7 @@ func TestNewReward(t *testing.T) {
 
 func TestReward_String(t *testing.T) {
 	type fields struct {
-		ID       string
+		ID       int
 		Title    string
 		XPAmount int
 		Rarity   string
@@ -140,27 +140,27 @@ func TestReward_String(t *testing.T) {
 	}{
 		{
 			name:   "common reward string",
-			fields: fields{ID: "1", Title: "Bread", XPAmount: 15, Rarity: "common"},
+			fields: fields{ID: 1, Title: "Bread", XPAmount: 15, Rarity: "common"},
 			want:   "[C] Bread - XP: 15 (common)",
 		},
 		{
 			name:   "rare reward string",
-			fields: fields{ID: "2", Title: "Silver Ring", XPAmount: 150, Rarity: "rare"},
+			fields: fields{ID: 2, Title: "Silver Ring", XPAmount: 150, Rarity: "rare"},
 			want:   "[R] Silver Ring - XP: 150 (rare)",
 		},
 		{
 			name:   "epic reward string",
-			fields: fields{ID: "3", Title: "Crystal Ball", XPAmount: 400, Rarity: "epic"},
+			fields: fields{ID: 3, Title: "Crystal Ball", XPAmount: 400, Rarity: "epic"},
 			want:   "[E] Crystal Ball - XP: 400 (epic)",
 		},
 		{
 			name:   "legendary reward string",
-			fields: fields{ID: "4", Title: "Excalibur", XPAmount: 1000, Rarity: "legendary"},
+			fields: fields{ID: 4, Title: "Excalibur", XPAmount: 1000, Rarity: "legendary"},
 			want:   "[L] Excalibur - XP: 1000 (legendary)",
 		},
 		{
 			name:   "fallback placeholder for unknown rarity",
-			fields: fields{ID: "5", Title: "Glitch Item", XPAmount: 1, Rarity: "unknown"},
+			fields: fields{ID: 5, Title: "Glitch Item", XPAmount: 1, Rarity: "unknown"},
 			want:   "[?] Glitch Item - XP: 1 (unknown)",
 		},
 	}
@@ -181,7 +181,7 @@ func TestReward_String(t *testing.T) {
 
 func TestReward_Value(t *testing.T) {
 	type fields struct {
-		ID       string
+		ID       int
 		Title    string
 		XPAmount int
 		Rarity   string

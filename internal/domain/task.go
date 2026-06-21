@@ -3,24 +3,18 @@ package domain
 import "fmt"
 
 type Task struct {
-	ID          string
+	ID          int
 	Title       string
 	Description string
 	isCompleted bool
 	XPReward    int
 	Reward      *Reward
-	QuestId 	string
+	QuestId     int
 }
 
-func NewTask(id, title string, XPReward int, questId string) (*Task, error) {
+func NewTask(id int, title string, XPReward int, questId int) (*Task, error) {
 	if title == "" {
 		return nil, &ValidationError{Field: "title", Message: "must not be empty"}
-	}
-	if id == "" {
-		return nil, &ValidationError{Field: "id", Message: "must not be empty"}
-	}
-	if questId == "" {
-		return nil, &ValidationError{Field: "questId", Message: "must not be empty"}
 	}
 	if XPReward < 0 {
 		XPReward = 0
@@ -39,5 +33,5 @@ func (t *Task) GetIsCompleted() bool {
 }
 
 func (t *Task) Print() {
-	fmt.Printf("Task: %s | %s | %s\n", t.ID, t.Title, t.Description)
+	fmt.Printf("Task: %d | %s | %s\n", t.ID, t.Title, t.Description)
 }

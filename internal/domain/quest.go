@@ -1,9 +1,12 @@
 package domain
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
 
 type Quest struct {
-	ID          string
+	ID          int
 	Title       string
 	Description string
 	Difficulty  int
@@ -12,7 +15,7 @@ type Quest struct {
 	Tasks       []*Task
 }
 
-func NewQuest(id, title, description string, difficulty int) (*Quest, error) {
+func NewQuest(id int, title, description string, difficulty int) (*Quest, error) {
 	if len(title) < 3 {
 		return nil, &ValidationError{Field: "title", Message: "must be at least 3 characters"}
 	}
@@ -38,14 +41,14 @@ func (q *Quest) AddTask(task *Task) {
 	q.Tasks = append(q.Tasks, task)
 }
 
-func (q *Quest) CompleteTask(taskId string) error {
+func (q *Quest) CompleteTask(taskId int) error {
 	for i := range q.Tasks {
 		if q.Tasks[i].ID == taskId {
 			q.Tasks[i].isCompleted = true
 			return nil
 		}
 	}
-	return &NotFoundError{Entity: "task", ID: taskId}
+	return &NotFoundError{Entity: "task", Value: strconv.Itoa(taskId)}
 }
 
 func (q *Quest) Summary() string {
@@ -59,7 +62,7 @@ func (q *Quest) Summary() string {
 	if !q.isActive {
 		status = "inactive"
 	}
-	return fmt.Sprintf("[%s] %s | Difficulty: %d | Progress : %d/%d | XP: %d | %s", q.ID, q.Title, q.Difficulty, completed, len(q.Tasks), q.TotalXP(), status)
+	return fmt.Sprintf("[q%d] %s | Difficulty: %d | Progress : %d/%d | XP: %d | %s", q.ID, q.Title, q.Difficulty, completed, len(q.Tasks), q.TotalXP(), status)
 
 }
 

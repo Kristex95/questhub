@@ -11,7 +11,7 @@ import (
 func TestNewQuest_Validation(t *testing.T) {
 	tests := []struct {
 		name        string
-		id          string
+		id          int
 		title       string
 		description string
 		difficulty  int
@@ -20,7 +20,7 @@ func TestNewQuest_Validation(t *testing.T) {
 	}{
 		{
 			name:        "valid quest",
-			id:          "q1",
+			id:          1,
 			title:       "Quest",
 			description: "Valid description",
 			difficulty:  5,
@@ -28,7 +28,7 @@ func TestNewQuest_Validation(t *testing.T) {
 		},
 		{
 			name:        "invalid title",
-			id:          "q2",
+			id:          2,
 			title:       "ab",
 			description: "Valid description",
 			difficulty:  5,
@@ -37,7 +37,7 @@ func TestNewQuest_Validation(t *testing.T) {
 		},
 		{
 			name:        "invalid description",
-			id:          "q3",
+			id:          3,
 			title:       "Valid title",
 			description: "",
 			difficulty:  5,
@@ -46,7 +46,7 @@ func TestNewQuest_Validation(t *testing.T) {
 		},
 		{
 			name:        "difficulty too low",
-			id:          "q4",
+			id:          4,
 			title:       "Valid title",
 			description: "Valid description",
 			difficulty:  0,
@@ -55,7 +55,7 @@ func TestNewQuest_Validation(t *testing.T) {
 		},
 		{
 			name:        "difficulty too high",
-			id:          "q5",
+			id:          5,
 			title:       "Valid title",
 			description: "Valid description",
 			difficulty:  11,
@@ -64,7 +64,7 @@ func TestNewQuest_Validation(t *testing.T) {
 		},
 		{
 			name:        "title and description invalid",
-			id:          "q6",
+			id:          6,
 			title:       "ab",
 			description: "",
 			difficulty:  5,
@@ -73,7 +73,7 @@ func TestNewQuest_Validation(t *testing.T) {
 		},
 		{
 			name:        "title and difficulty invalid",
-			id:          "q7",
+			id:          7,
 			title:       "ab",
 			description: "Valid description",
 			difficulty:  0,
@@ -82,7 +82,7 @@ func TestNewQuest_Validation(t *testing.T) {
 		},
 		{
 			name:        "all invalid",
-			id:          "q8",
+			id:          8,
 			title:       "a",
 			description: "",
 			difficulty:  0,
@@ -112,7 +112,7 @@ func TestNewQuest_Validation(t *testing.T) {
 
 func TestNewQuest(t *testing.T) {
 	type args struct {
-		id          string
+		id          int
 		title       string
 		description string
 		difficulty  int
@@ -126,13 +126,13 @@ func TestNewQuest(t *testing.T) {
 		{
 			name: "valid quest creation",
 			args: args{
-				id:          "q1",
+				id:          1,
 				title:       "Quest Title",
 				description: "Some description",
 				difficulty:  5,
 			},
 			want: &Quest{
-				ID:          "q1",
+				ID:          1,
 				Title:       "Quest Title",
 				Description: "Some description",
 				Difficulty:  5,
@@ -159,7 +159,7 @@ func TestNewQuest(t *testing.T) {
 
 func TestQuest_AddTask(t *testing.T) {
 	type fields struct {
-		ID          string
+		ID          int
 		Title       string
 		Description string
 		Difficulty  int
@@ -178,7 +178,7 @@ func TestQuest_AddTask(t *testing.T) {
 		{
 			name: "add single task",
 			fields: fields{
-				ID:          "q1",
+				ID:          1,
 				Title:       "Quest",
 				Description: "Desc",
 				Difficulty:  5,
@@ -188,7 +188,7 @@ func TestQuest_AddTask(t *testing.T) {
 			},
 			args: args{
 				task: &Task{
-					ID:          "t1",
+					ID:          1,
 					isCompleted: false,
 					XPReward:    100,
 				},
@@ -197,7 +197,7 @@ func TestQuest_AddTask(t *testing.T) {
 		{
 			name: "add multiple tasks",
 			fields: fields{
-				ID:          "q1",
+				ID:          1,
 				Title:       "Quest",
 				Description: "Desc",
 				Difficulty:  5,
@@ -207,7 +207,7 @@ func TestQuest_AddTask(t *testing.T) {
 			},
 			args: args{
 				task: &Task{
-					ID:          "t2",
+					ID:          2,
 					isCompleted: false,
 					XPReward:    200,
 				},
@@ -230,7 +230,7 @@ func TestQuest_AddTask(t *testing.T) {
 				t.Errorf("task was not added")
 			}
 			if q.Tasks[len(q.Tasks)-1].ID != tt.args.task.ID {
-				t.Errorf("expected last task to be %s, got %s", tt.args.task.ID, q.Tasks[len(q.Tasks)-1].ID)
+				t.Errorf("expected last task to be %d, got %d", tt.args.task.ID, q.Tasks[len(q.Tasks)-1].ID)
 			}
 		})
 	}
@@ -238,7 +238,7 @@ func TestQuest_AddTask(t *testing.T) {
 
 func TestQuest_CompleteTask(t *testing.T) {
 	type fields struct {
-		ID          string
+		ID          int
 		Title       string
 		Description string
 		Difficulty  int
@@ -247,7 +247,7 @@ func TestQuest_CompleteTask(t *testing.T) {
 		Tasks       []*Task
 	}
 	type args struct {
-		taskId string
+		taskId int
 	}
 	tests := []struct {
 		name    string
@@ -259,10 +259,10 @@ func TestQuest_CompleteTask(t *testing.T) {
 			name: "complete existing task",
 			fields: fields{
 				Tasks: []*Task{
-					{ID: "t1", isCompleted: false, XPReward: 100},
+					{ID: 1, isCompleted: false, XPReward: 100},
 				},
 			},
-			args:    args{taskId: "t1"},
+			args:    args{taskId: 1},
 			wantErr: false,
 		},
 		{
@@ -270,7 +270,7 @@ func TestQuest_CompleteTask(t *testing.T) {
 			fields: fields{
 				Tasks: []*Task{},
 			},
-			args:    args{taskId: "missing"},
+			args:    args{taskId: 0},
 			wantErr: true,
 		},
 	}
@@ -294,7 +294,7 @@ func TestQuest_CompleteTask(t *testing.T) {
 
 func TestQuest_Summary(t *testing.T) {
 	type fields struct {
-		ID          string
+		ID          int
 		Title       string
 		Description string
 		Difficulty  int
@@ -310,15 +310,15 @@ func TestQuest_Summary(t *testing.T) {
 		{
 			name: "summary with tasks",
 			fields: fields{
-				ID:          "q1",
+				ID:          1,
 				Title:       "Quest",
 				Description: "Desc",
 				Difficulty:  5,
 				isActive:    true,
 				XPReward:    500,
 				Tasks: []*Task{
-					{ID: "t1", isCompleted: true},
-					{ID: "t2", isCompleted: false},
+					{ID: 1, isCompleted: true},
+					{ID: 2, isCompleted: false},
 				},
 			},
 			want: "[q1] Quest | Difficulty: 5 | Progress : 1/2 | XP: 500 | active",
@@ -344,7 +344,7 @@ func TestQuest_Summary(t *testing.T) {
 
 func TestQuest_TotalXP(t *testing.T) {
 	type fields struct {
-		ID          string
+		ID          int
 		Title       string
 		Description string
 		Difficulty  int
@@ -389,7 +389,7 @@ func TestQuest_TotalXP(t *testing.T) {
 
 func TestQuest_Activate(t *testing.T) {
 	type fields struct {
-		ID          string
+		ID          int
 		Title       string
 		Description string
 		Difficulty  int
@@ -429,7 +429,7 @@ func TestQuest_Activate(t *testing.T) {
 
 func TestQuest_Deactivate(t *testing.T) {
 	type fields struct {
-		ID          string
+		ID          int
 		Title       string
 		Description string
 		Difficulty  int
@@ -469,7 +469,7 @@ func TestQuest_Deactivate(t *testing.T) {
 
 func TestQuest_GetCompletedTasks(t *testing.T) {
 	type fields struct {
-		ID          string
+		ID          int
 		Title       string
 		Description string
 		Difficulty  int
@@ -486,12 +486,12 @@ func TestQuest_GetCompletedTasks(t *testing.T) {
 			name: "filter completed tasks",
 			fields: fields{
 				Tasks: []*Task{
-					{ID: "t1", isCompleted: true},
-					{ID: "t2", isCompleted: false},
+					{ID: 1, isCompleted: true},
+					{ID: 2, isCompleted: false},
 				},
 			},
 			want: []*Task{
-				{ID: "t1", isCompleted: true},
+				{ID: 1, isCompleted: true},
 			},
 		},
 	}
@@ -515,7 +515,7 @@ func TestQuest_GetCompletedTasks(t *testing.T) {
 
 func TestQuest_GetRemainingTasks(t *testing.T) {
 	type fields struct {
-		ID          string
+		ID          int
 		Title       string
 		Description string
 		Difficulty  int
@@ -532,12 +532,12 @@ func TestQuest_GetRemainingTasks(t *testing.T) {
 			name: "filter remaining tasks",
 			fields: fields{
 				Tasks: []*Task{
-					{ID: "t1", isCompleted: true},
-					{ID: "t2", isCompleted: false},
+					{ID: 1, isCompleted: true},
+					{ID: 2, isCompleted: false},
 				},
 			},
 			want: []*Task{
-				{ID: "t2", isCompleted: false},
+				{ID: 2, isCompleted: false},
 			},
 		},
 	}
@@ -561,7 +561,7 @@ func TestQuest_GetRemainingTasks(t *testing.T) {
 
 func TestQuest_GetProgressPercentage(t *testing.T) {
 	type fields struct {
-		ID          string
+		ID          int
 		Title       string
 		Description string
 		Difficulty  int
@@ -605,7 +605,7 @@ func TestQuest_GetProgressPercentage(t *testing.T) {
 
 func TestQuest_IsCompleted(t *testing.T) {
 	type fields struct {
-		ID          string
+		ID          int
 		Title       string
 		Description string
 		Difficulty  int

@@ -10,7 +10,7 @@ import (
 func TestNewUser_Validation(t *testing.T) {
 	tests := []struct {
 		name      string
-		id        string
+		id        int
 		username  string
 		email     string
 		wantErr   bool
@@ -18,29 +18,22 @@ func TestNewUser_Validation(t *testing.T) {
 	}{
 		{
 			name:     "valid user",
-			id:       "u1",
+			id:       1,
 			username: "kirill",
 			email:    "test@mail.com",
 			wantErr:  false,
 		},
 		{
 			name:      "username too short",
-			id:        "u1",
+			id:        1,
 			username:  "a",
 			email:     "test@mail.com",
 			wantErr:   true,
 			wantField: "username",
 		},
 		{
-			name:     "empty id allowed",
-			id:       "",
-			username: "kirill",
-			email:    "test@mail.com",
-			wantErr:  false,
-		},
-		{
 			name:     "empty email allowed",
-			id:       "u1",
+			id:       1,
 			username: "kirill",
 			email:    "",
 			wantErr:  false,
@@ -69,7 +62,7 @@ func TestNewUser_Validation(t *testing.T) {
 
 func TestUser_AddXP(t *testing.T) {
 	type fields struct {
-		ID              string
+		ID              int
 		Username        string
 		Email           string
 		Level           int
@@ -91,7 +84,7 @@ func TestUser_AddXP(t *testing.T) {
 		{
 			name: "add xp without level up",
 			fields: fields{
-				ID:       "u1",
+				ID:       1,
 				Username: "kirill",
 				Level:    1,
 				XP:       0,
@@ -104,7 +97,7 @@ func TestUser_AddXP(t *testing.T) {
 		{
 			name: "level up once",
 			fields: fields{
-				ID:       "u1",
+				ID:       1,
 				Username: "kirill",
 				Level:    1,
 				XP:       0,
@@ -142,7 +135,7 @@ func TestUser_AddXP(t *testing.T) {
 
 func TestUser_LevelUp(t *testing.T) {
 	type fields struct {
-		ID              string
+		ID              int
 		Username        string
 		Email           string
 		Level           int
@@ -190,7 +183,7 @@ func TestUser_LevelUp(t *testing.T) {
 
 func TestUser_CompleteQuest(t *testing.T) {
 	type fields struct {
-		ID              string
+		ID              int
 		Username        string
 		Email           string
 		Level           int

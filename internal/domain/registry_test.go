@@ -12,7 +12,7 @@ func TestNewQuestRegistry(t *testing.T) {
 	}{
 		{
 			name: "initialize empty quest registry",
-			want: &QuestRegistry{quests: make(map[string]*Quest)},
+			want: &QuestRegistry{quests: make(map[int]*Quest)},
 		},
 	}
 	for _, tt := range tests {
@@ -25,10 +25,10 @@ func TestNewQuestRegistry(t *testing.T) {
 }
 
 func TestQuestRegistry_AddQuest(t *testing.T) {
-	q1 := &Quest{ID: "q1", Title: "Quest 1"}
+	q1 := &Quest{ID: 1, Title: "Quest 1"}
 
 	type fields struct {
-		quests map[string]*Quest
+		quests map[int]*Quest
 	}
 	type args struct {
 		quest *Quest
@@ -41,13 +41,13 @@ func TestQuestRegistry_AddQuest(t *testing.T) {
 	}{
 		{
 			name:   "add new quest successfully",
-			fields: fields{quests: make(map[string]*Quest)},
+			fields: fields{quests: make(map[int]*Quest)},
 			args:   args{quest: q1},
 			want:   true,
 		},
 		{
 			name:   "fail to add quest with duplicate ID",
-			fields: fields{quests: map[string]*Quest{"q1": q1}},
+			fields: fields{quests: map[int]*Quest{1: q1}},
 			args:   args{quest: q1},
 			want:   false,
 		},
@@ -65,13 +65,13 @@ func TestQuestRegistry_AddQuest(t *testing.T) {
 }
 
 func TestQuestRegistry_RemoveQuest(t *testing.T) {
-	q1 := &Quest{ID: "q1", Title: "Quest 1"}
+	q1 := &Quest{ID: 1, Title: "Quest 1"}
 
 	type fields struct {
-		quests map[string]*Quest
+		quests map[int]*Quest
 	}
 	type args struct {
-		id string
+		id int
 	}
 	tests := []struct {
 		name   string
@@ -81,14 +81,14 @@ func TestQuestRegistry_RemoveQuest(t *testing.T) {
 	}{
 		{
 			name:   "remove existing quest",
-			fields: fields{quests: map[string]*Quest{"q1": q1}},
-			args:   args{id: "q1"},
+			fields: fields{quests: map[int]*Quest{1: q1}},
+			args:   args{id: 1},
 			want:   true,
 		},
 		{
 			name:   "remove non-existing quest",
-			fields: fields{quests: map[string]*Quest{"q1": q1}},
-			args:   args{id: "q2"},
+			fields: fields{quests: map[int]*Quest{1: q1}},
+			args:   args{id: 2},
 			want:   false,
 		},
 	}
@@ -105,13 +105,13 @@ func TestQuestRegistry_RemoveQuest(t *testing.T) {
 }
 
 func TestQuestRegistry_GetQuestById(t *testing.T) {
-	q1 := &Quest{ID: "q1", Title: "Quest 1"}
+	q1 := &Quest{ID: 1, Title: "Quest 1"}
 
 	type fields struct {
-		quests map[string]*Quest
+		quests map[int]*Quest
 	}
 	type args struct {
-		id string
+		id int
 	}
 	tests := []struct {
 		name   string
@@ -122,15 +122,15 @@ func TestQuestRegistry_GetQuestById(t *testing.T) {
 	}{
 		{
 			name:   "quest found",
-			fields: fields{quests: map[string]*Quest{"q1": q1}},
-			args:   args{id: "q1"},
+			fields: fields{quests: map[int]*Quest{1: q1}},
+			args:   args{id: 1},
 			want:   q1,
 			want1:  true,
 		},
 		{
 			name:   "quest not found",
-			fields: fields{quests: map[string]*Quest{"q1": q1}},
-			args:   args{id: "q2"},
+			fields: fields{quests: map[int]*Quest{1: q1}},
+			args:   args{id: 2},
 			want:   nil,
 			want1:  false,
 		},
@@ -152,10 +152,10 @@ func TestQuestRegistry_GetQuestById(t *testing.T) {
 }
 
 func TestQuestRegistry_ListQuests(t *testing.T) {
-	q1 := &Quest{ID: "q1", Title: "Quest 1"}
+	q1 := &Quest{ID: 1, Title: "Quest 1"}
 
 	type fields struct {
-		quests map[string]*Quest
+		quests map[int]*Quest
 	}
 	tests := []struct {
 		name   string
@@ -164,12 +164,12 @@ func TestQuestRegistry_ListQuests(t *testing.T) {
 	}{
 		{
 			name:   "empty registry returns empty slice",
-			fields: fields{quests: make(map[string]*Quest)},
+			fields: fields{quests: make(map[int]*Quest)},
 			want:   []*Quest{},
 		},
 		{
 			name:   "registry with single quest",
-			fields: fields{quests: map[string]*Quest{"q1": q1}},
+			fields: fields{quests: map[int]*Quest{1: q1}},
 			want:   []*Quest{q1},
 		},
 	}
@@ -186,11 +186,11 @@ func TestQuestRegistry_ListQuests(t *testing.T) {
 }
 
 func TestQuestRegistry_CountQuests(t *testing.T) {
-	q1 := &Quest{ID: "q1"}
-	q2 := &Quest{ID: "q2"}
+	q1 := &Quest{ID: 1}
+	q2 := &Quest{ID: 2}
 
 	type fields struct {
-		quests map[string]*Quest
+		quests map[int]*Quest
 	}
 	tests := []struct {
 		name   string
@@ -199,12 +199,12 @@ func TestQuestRegistry_CountQuests(t *testing.T) {
 	}{
 		{
 			name:   "zero quests",
-			fields: fields{quests: make(map[string]*Quest)},
+			fields: fields{quests: make(map[int]*Quest)},
 			want:   0,
 		},
 		{
 			name:   "two quests",
-			fields: fields{quests: map[string]*Quest{"q1": q1, "q2": q2}},
+			fields: fields{quests: map[int]*Quest{1: q1, 2: q2}},
 			want:   2,
 		},
 	}
@@ -221,11 +221,11 @@ func TestQuestRegistry_CountQuests(t *testing.T) {
 }
 
 func TestQuestRegistry_FindByDifficulty(t *testing.T) {
-	qEasy := &Quest{ID: "q1", Difficulty: 2}
-	qHard := &Quest{ID: "q2", Difficulty: 8}
+	qEasy := &Quest{ID: 1, Difficulty: 2}
+	qHard := &Quest{ID: 2, Difficulty: 8}
 
 	type fields struct {
-		quests map[string]*Quest
+		quests map[int]*Quest
 	}
 	type args struct {
 		min int
@@ -239,13 +239,13 @@ func TestQuestRegistry_FindByDifficulty(t *testing.T) {
 	}{
 		{
 			name:   "no quests match difficulty range",
-			fields: fields{quests: map[string]*Quest{"q1": qEasy, "q2": qHard}},
+			fields: fields{quests: map[int]*Quest{1: qEasy, 2: qHard}},
 			args:   args{min: 4, max: 6},
 			want:   []*Quest{},
 		},
 		{
 			name:   "one quest matches difficulty range",
-			fields: fields{quests: map[string]*Quest{"q1": qEasy, "q2": qHard}},
+			fields: fields{quests: map[int]*Quest{1: qEasy, 2: qHard}},
 			args:   args{min: 1, max: 3},
 			want:   []*Quest{qEasy},
 		},
@@ -263,12 +263,12 @@ func TestQuestRegistry_FindByDifficulty(t *testing.T) {
 }
 
 func TestQuestRegistry_SortedByDifficulty(t *testing.T) {
-	qLow := &Quest{ID: "q1", Difficulty: 2}
-	qMid := &Quest{ID: "q2", Difficulty: 5}
-	qHigh := &Quest{ID: "q3", Difficulty: 9}
+	qLow := &Quest{ID: 1, Difficulty: 2}
+	qMid := &Quest{ID: 2, Difficulty: 5}
+	qHigh := &Quest{ID: 3, Difficulty: 9}
 
 	type fields struct {
-		quests map[string]*Quest
+		quests map[int]*Quest
 	}
 	tests := []struct {
 		name   string
@@ -277,12 +277,12 @@ func TestQuestRegistry_SortedByDifficulty(t *testing.T) {
 	}{
 		{
 			name:   "empty registry sorted",
-			fields: fields{quests: make(map[string]*Quest)},
+			fields: fields{quests: make(map[int]*Quest)},
 			want:   []*Quest{},
 		},
 		{
 			name:   "quests are properly sorted by unique difficulties",
-			fields: fields{quests: map[string]*Quest{"q2": qMid, "q3": qHigh, "q1": qLow}},
+			fields: fields{quests: map[int]*Quest{2: qMid, 3: qHigh, 1: qLow}},
 			want:   []*Quest{qLow, qMid, qHigh},
 		},
 	}

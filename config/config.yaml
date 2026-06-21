@@ -1,0 +1,7 @@
+postgres:
+  host: localhost
+  port: 5433
+  user: postgres
+  password: postgres
+  dbname: questhub
+  sslmode: disable

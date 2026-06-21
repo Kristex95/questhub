@@ -3,7 +3,7 @@ package domain
 import "fmt"
 
 type User struct {
-	ID              string
+	ID              int
 	Username        string
 	Email           string
 	Level           int
@@ -12,7 +12,7 @@ type User struct {
 	TotalXPEarned   int
 }
 
-func NewUser(id, username, email string) (*User, error) {
+func NewUser(id int, username string, email string) (*User, error) {
 	if len(username) < 2 {
 		return nil, &ValidationError{Field: "username", Message: "must be longer than 2 symbols"}
 	}
@@ -69,7 +69,7 @@ func (u *User) CompleteQuest(quest *Quest) error {
 
 func (u *User) PrintInfo() {
 	fmt.Println("=== User Profile ===")
-	fmt.Printf("ID: %s\n", u.ID)
+	fmt.Printf("ID: %d\n", u.ID)
 	fmt.Printf("Username: %s\n", u.Username)
 	fmt.Printf("Email: %s\n", u.Email)
 	fmt.Printf("Level: %d\n", u.Level)
