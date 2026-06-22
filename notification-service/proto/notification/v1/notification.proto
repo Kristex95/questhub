@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package notification.v1;
+
+option go_package = "github.com/questhub/notification/gen/notification/v1;notificationv1";
+
+message Notification {
+  int64  id      = 1;
+  int64  user_id = 2;
+  string message = 3;
+  bool   is_read = 4;
+}
+
+message CreateNotificationRequest {
+  int64  user_id = 1;
+  string message = 2;
+}
+
+message ListNotificationsRequest  { int64 user_id = 1; }
+message ListNotificationsResponse { repeated Notification notifications = 1; }
+
+service NotificationService {
+  rpc CreateNotification(CreateNotificationRequest) returns (Notification);
+  rpc ListNotifications(ListNotificationsRequest)   returns (ListNotificationsResponse);
+}

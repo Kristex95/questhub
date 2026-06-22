@@ -3,8 +3,8 @@ package models
 import "time"
 
 type Reward struct {
-	ID         int       `db:"id" json:"id"`
-	QuestID    int       `db:"quest_id" json:"quest_id"`
+	ID         int64     `db:"id" json:"id"`
+	QuestID    int64     `db:"quest_id" json:"quest_id"`
 	RewardType string    `db:"reward_type" json:"reward_type"`
 	XPAmount   int       `db:"xp_amount" json:"xp_amount"`
 	ItemName   *string   `db:"item_name" json:"item_name,omitempty"`

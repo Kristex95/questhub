@@ -3,8 +3,8 @@ package models
 import "time"
 
 type Task struct {
-	ID          int       `db:"id" json:"id"`
-	QuestID     int       `db:"quest_id" json:"quest_id"`
+	ID          int64       `db:"id" json:"id"`
+	QuestID     int64       `db:"quest_id" json:"quest_id"`
 	Title       string    `db:"title" json:"title"`
 	Description string    `db:"description" json:"description"`
 	IsCompleted bool      `db:"is_completed" json:"is_completed"`

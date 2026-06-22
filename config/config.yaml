@@ -1,3 +1,8 @@
+env: "local"
+
+http:
+  port: 8080
+
 postgres:
   host: localhost
   port: 5433
@@ -5,3 +10,14 @@ postgres:
   password: postgres
   dbname: questhub
   sslmode: disable
+
+redis:
+  addr: "localhost:6379"
+  password: ""
+  db: 0
+
+cache:
+  quest_ttl: "60s"
+  
+grpc:
+  notification_addr: "localhost:50051"

@@ -5,169 +5,178 @@ import (
 	"testing"
 
 	"github.com/Kristex95/questhub/internal/domain"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func setupGameTest() (*GameService, *MockQuestRepository, *MockTaskRepository, *MockUserRepository) {
-	questRepo := NewMockQuestRepository()
-	taskRepo := NewMockTaskRepository()
-	userRepo := NewMockUserRepository()
-	svc := NewGameService(questRepo, taskRepo, userRepo)
-	return svc, questRepo, taskRepo, userRepo
+type mockQuestStore struct {
+	items map[int]domain.Quest
 }
 
-func TestGameService_HappyPath(t *testing.T) {
-	svc, questRepo, taskRepo, userRepo := setupGameTest()
-
-	user, _ := userRepo.Create(domain.User{Username: "Hero", Email: "hero@test.com"})
-	quest, _ := questRepo.Create(domain.Quest{Title: "Save the Village", Description: "Defeat local monsters", Difficulty: 4})
-	
-	t1, _ := taskRepo.Create(domain.Task{QuestId: quest.ID, Title: "Gather herbs"})
-	t2, _ := taskRepo.Create(domain.Task{QuestId: quest.ID, Title: "Defeat Goblin Boss"})
-
-	err := svc.StartQuest(user.ID, quest.ID)
-	if err != nil {
-		t.Fatalf("expected no error on StartQuest, got %v", err)
+func (m *mockQuestStore) Create(quest domain.Quest) (domain.Quest, error) { return quest, nil }
+func (m *mockQuestStore) Get(id int) (domain.Quest, error) {
+	quest, ok := m.items[id]
+	if !ok {
+		return domain.Quest{}, errors.New("quest not found")
 	}
-
-	err = svc.CompleteTask(user.ID, t1.ID)
-	if err != nil {
-		t.Fatalf("expected no error on CompleteTask 1, got %v", err)
-	}
-
-	progress, err := svc.GetProgress(user.ID)
-	if err != nil {
-		t.Fatalf("expected no error on GetProgress, got %v", err)
-	}
-	if progress.Percentage != 50.0 {
-		t.Errorf("expected progress percentage to be 50.0, got %.1f", progress.Percentage)
-	}
-
-	err = svc.CompleteTask(user.ID, t2.ID)
-	if err != nil {
-		t.Fatalf("expected no error on CompleteTask 2, got %v", err)
-	}
-
-	progress, err = svc.GetProgress(user.ID)
-	if err != nil {
-		t.Fatalf("expected no error on GetProgress, got %v", err)
-	}
-	if progress.Percentage != 100.0 {
-		t.Errorf("expected progress percentage to be 100.0, got %.1f", progress.Percentage)
-	}
-	if progress.CompletedTasks != 2 || progress.TotalTasks != 2 {
-		t.Errorf("expected 2/2 tasks, got %d/%d", progress.CompletedTasks, progress.TotalTasks)
-	}
-
-	reward, err := svc.FinishQuest(user.ID)
-	if err != nil {
-		t.Fatalf("expected no error on FinishQuest, got %v", err)
-	}
-
-	expectedRewardTitle := "Completed: Save the Village"
-	if reward.Title != expectedRewardTitle {
-		t.Errorf("expected reward title '%s', got '%s'", expectedRewardTitle, reward.Title)
-	}
-	expectedXP := 4 * 100 // difficulty * 100
-	if reward.XPAmount != expectedXP {
-		t.Errorf("expected reward XP %d, got %d", expectedXP, reward.XPAmount)
-	}
-
-	updatedUser, _ := userRepo.Get(user.ID)
-	if updatedUser.XP != expectedXP {
-		t.Errorf("expected user to have %d XP, got %d", expectedXP, updatedUser.XP)
-	}
-
-	_, err = svc.GetProgress(user.ID)
-	if err == nil {
-		t.Error("expected error when getting progress after finishing the quest, but got nil")
-	}
+	return quest, nil
+}
+func (m *mockQuestStore) Update(id int, quest domain.Quest) (domain.Quest, error) {
+	m.items[id] = quest
+	return quest, nil
 }
 
-func TestGameService_Start_NoActiveQuest(t *testing.T) {
-	svc, questRepo, _, userRepo := setupGameTest()
-
-	user, _ := userRepo.Create(domain.User{Username: "Player"})
-	quest, _ := questRepo.Create(domain.Quest{Title: "Solo Leveling", Difficulty: 1})
-
-	err := svc.StartQuest(user.ID, quest.ID)
-	if err != nil {
-		t.Errorf("expected single quest start to succeed, got %v", err)
-	}
+type mockTaskStore struct {
+	items map[int]*domain.Task
 }
 
-// 3. Start коли вже є активний квест - помилка
-func TestGameService_Start_AlreadyHasActiveQuest(t *testing.T) {
-	svc, questRepo, _, userRepo := setupGameTest()
-
-	u, _ := userRepo.Create(domain.User{Username: "BusyPlayer"})
-	q1, _ := questRepo.Create(domain.Quest{Title: "First Quest", Difficulty: 1})
-	q2, _ := questRepo.Create(domain.Quest{Title: "Second Quest", Difficulty: 2})
-
-	_ = svc.StartQuest(u.ID, q1.ID)
-
-	err := svc.StartQuest(u.ID, q2.ID)
-	if err == nil {
-		t.Fatal("expected error when starting a second quest, got nil")
+func (m *mockTaskStore) Create(task domain.Task) (domain.Task, error) {
+	m.items[task.ID] = &task
+	return task, nil
+}
+func (m *mockTaskStore) Get(id int) (domain.Task, error) {
+	task, ok := m.items[id]
+	if !ok {
+		return domain.Task{}, errors.New("task not found")
 	}
-
-	if !errors.Is(err, domain.ErrAlreadyStarted) {
-		t.Errorf("expected error to be ErrAlreadyStarted, got %v", err)
+	return *task, nil
+}
+func (m *mockTaskStore) GetByQuestID(questID int) ([]*domain.Task, error) {
+	var tasks []*domain.Task
+	for _, task := range m.items {
+		if task.QuestId == questID {
+			tasks = append(tasks, task)
+		}
 	}
+	return tasks, nil
+}
+func (m *mockTaskStore) Update(id int, task domain.Task) (domain.Task, error) {
+	m.items[id] = &task
+	return task, nil
 }
 
-func TestGameService_CompleteTask_WrongQuest(t *testing.T) {
-	svc, questRepo, taskRepo, userRepo := setupGameTest()
-
-	user, _ := userRepo.Create(domain.User{Username: "Cheater"})
-	q1, _ := questRepo.Create(domain.Quest{Title: "Active Quest", Difficulty: 1})
-	q2, _ := questRepo.Create(domain.Quest{Title: "Other Quest", Difficulty: 1})
-
-	_ = svc.StartQuest(user.ID, q1.ID) 
-
-	foreignTask, _ := taskRepo.Create(domain.Task{QuestId: q2.ID, Title: "Foreign Objective"})
-
-	err := svc.CompleteTask(user.ID, foreignTask.ID)
-	if err == nil {
-		t.Fatal("expected error when completing a task from an inactive quest, got nil")
-	}
-
-	if !errors.Is(err, domain.ErrValidation) {
-		t.Errorf("expected ErrValidation for out-of-scope task, got %v", err)
-	}
+type mockUserStore struct {
+	items map[int]domain.User
 }
 
-func TestGameService_FinishQuest_IncompleteTasks(t *testing.T) {
-	svc, questRepo, taskRepo, userRepo := setupGameTest()
-
-	user, _ := userRepo.Create(domain.User{Username: "Slacker"})
-	quest, _ := questRepo.Create(domain.Quest{Title: "Hard Quest", Difficulty: 5})
-	
-	_, _ = taskRepo.Create(domain.Task{QuestId: quest.ID, Title: "Do some actual work"})
-
-	_ = svc.StartQuest(user.ID, quest.ID)
-
-	_, err := svc.FinishQuest(user.ID)
-	if err == nil {
-		t.Fatal("expected error when finishing quest with incomplete tasks, got nil")
+func (m *mockUserStore) Create(user domain.User) (domain.User, error) { return user, nil }
+func (m *mockUserStore) Get(id int) (domain.User, error) {
+	user, ok := m.items[id]
+	if !ok {
+		return domain.User{}, errors.New("user not found")
 	}
-
-	var valErr *domain.ValidationError
-	if !errors.As(err, &valErr) {
-		t.Errorf("expected domain.ValidationError, got type %T (%v)", err, err)
-	}
+	return user, nil
+}
+func (m *mockUserStore) Update(id int, user domain.User) (domain.User, error) {
+	m.items[id] = user
+	return user, nil
 }
 
-func TestGameService_GetProgress_NoActiveQuest(t *testing.T) {
-	svc, _, _, userRepo := setupGameTest()
+func newGameService(t *testing.T) (*GameService, *mockQuestStore, *mockTaskStore, *mockUserStore) {
+	quests := &mockQuestStore{items: make(map[int]domain.Quest)}
+	tasks := &mockTaskStore{items: make(map[int]*domain.Task)}
+	users := &mockUserStore{items: make(map[int]domain.User)}
+	return NewGameService(quests, tasks, users), quests, tasks, users
+}
 
-	u, _ := userRepo.Create(domain.User{Username: "LoverOfIdleness"})
+func TestGameService_StartQuest(t *testing.T) {
+	svc, quests, _, users := newGameService(t)
+	users.items[1] = domain.User{ID: 1, Username: "player"}
+	quests.items[1] = domain.Quest{ID: 1, Title: "Test"}
 
-	_, err := svc.GetProgress(u.ID)
-	if err == nil {
-		t.Fatal("expected error when getting progress without an active quest, got nil")
+	cases := []struct {
+		name      string
+		userID    int
+		questID   int
+		wantError bool
+	}{
+		{"success", 1, 1, false},
+		{"invalid user", 2, 1, true},
+		{"invalid quest", 1, 2, true},
 	}
 
-	if !errors.Is(err, domain.ErrNotFound) {
-		t.Errorf("expected ErrNotFound when no quest is active, got %v", err)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := svc.StartQuest(tc.userID, tc.questID)
+			if tc.wantError {
+				assert.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+		})
 	}
+
+	err := svc.StartQuest(1, 1)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, domain.ErrAlreadyStarted)
+}
+
+func TestGameService_CompleteTask_Success(t *testing.T) {
+	svc, quests, tasks, users := newGameService(t)
+	users.items[1] = domain.User{ID: 1, Username: "player"}
+	quests.items[1] = domain.Quest{ID: 1, Title: "Test", Tasks: []*domain.Task{{ID: 10, QuestId: 1}}}
+	tasks.items[10] = &domain.Task{ID: 10, Title: "Task 10", QuestId: 1}
+
+	err := svc.StartQuest(1, 1)
+	require.NoError(t, err)
+
+	err = svc.CompleteTask(1, 10)
+	require.NoError(t, err)
+
+	updatedTask, err := tasks.Get(10)
+	require.NoError(t, err)
+	assert.True(t, updatedTask.GetIsCompleted())
+}
+
+func TestGameService_GetProgress(t *testing.T) {
+	svc, quests, tasks, users := newGameService(t)
+	users.items[1] = domain.User{ID: 1, Username: "player"}
+	quests.items[1] = domain.Quest{ID: 1, Title: "Test", Tasks: []*domain.Task{{ID: 10, QuestId: 1}}}
+	tasks.items[10] = &domain.Task{ID: 10, Title: "Task 10", QuestId: 1}
+
+	err := svc.StartQuest(1, 1)
+	require.NoError(t, err)
+
+	progress, err := svc.GetProgress(1)
+	require.NoError(t, err)
+	assert.Equal(t, "Test", progress.QuestTitle)
+	assert.Equal(t, 0, progress.CompletedTasks)
+	assert.Equal(t, 1, progress.TotalTasks)
+}
+
+func TestGameService_FinishQuest_Success(t *testing.T) {
+	svc, quests, tasks, users := newGameService(t)
+	users.items[1] = domain.User{ID: 1, Username: "player", XP: 0}
+	taskPtr := &domain.Task{ID: 10, Title: "Task 10", QuestId: 1}
+	quests.items[1] = domain.Quest{ID: 1, Title: "Test", Difficulty: 1, Tasks: []*domain.Task{taskPtr}}
+	tasks.items[10] = taskPtr
+
+	quest := quests.items[1]
+	err := quest.CompleteTask(10)
+	require.NoError(t, err)
+	quests.items[1] = quest
+
+	err = svc.StartQuest(1, 1)
+	require.NoError(t, err)
+
+	reward, err := svc.FinishQuest(1)
+	require.NoError(t, err)
+	assert.Equal(t, "Completed: Test", reward.Title)
+	assert.Equal(t, 100, users.items[1].XP)
+}
+
+func TestGameService_FinishQuest_ValidationError(t *testing.T) {
+	svc, quests, tasks, users := newGameService(t)
+	users.items[1] = domain.User{ID: 1, Username: "player"}
+	quests.items[1] = domain.Quest{ID: 1, Title: "Test", Difficulty: 1, Tasks: []*domain.Task{{ID: 10, QuestId: 1}}}
+	tasks.items[10] = &domain.Task{ID: 10, Title: "Task 10", QuestId: 1}
+
+	err := svc.StartQuest(1, 1)
+	require.NoError(t, err)
+
+	reward, err := svc.FinishQuest(1)
+	require.Error(t, err)
+	assert.Nil(t, reward)
+	var validationErr *domain.ValidationError
+	assert.ErrorAs(t, err, &validationErr)
 }

@@ -2,14 +2,23 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log"
+	"net/http"
 	"os/signal"
 	"syscall"
+	"time"
 
+	rediscache "github.com/Kristex95/questhub/internal/cache"
 	"github.com/Kristex95/questhub/internal/config"
 	"github.com/Kristex95/questhub/internal/database"
-	"github.com/Kristex95/questhub/internal/models"
+	"github.com/Kristex95/questhub/internal/handler"
+	"github.com/Kristex95/questhub/internal/repository/cache"
 	"github.com/Kristex95/questhub/internal/repository/postgres"
+	"github.com/Kristex95/questhub/internal/repository/stats"
+	"github.com/Kristex95/questhub/internal/service"
+	"github.com/Kristex95/questhub/internal/transport/grpc"
 )
 
 func main() {
@@ -18,7 +27,7 @@ func main() {
 
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("load config: %v", err)	
+		log.Fatalf("load config: %v", err)
 	}
 
 	pool, err := database.NewPostgresPool(ctx, cfg.Postgres.DSN())
@@ -28,46 +37,67 @@ func main() {
 	defer pool.Close()
 	log.Println("postgres connected")
 
-	userRepo := postgres.NewUserRepository(pool)
+	rdb, err := rediscache.NewRedisClient(ctx, cfg.Redis)
+	if err != nil {
+		log.Fatalf("connect redis: %v", err)
+	}
+	defer rdb.Close()
+	log.Println("redis connected")
+
+	questRepo := cache.NewCachedQuestRepository(
+		postgres.NewQuestRepository(pool),
+		rdb,
+		cfg.Cache.QuestTTL,
+	)
 	taskRepo := postgres.NewTaskRepository(pool)
-	questRepo := postgres.NewQuestRepository(pool)
+	userRepo := postgres.NewUserRepository(pool)
 	rewardRepo := postgres.NewRewardRepository(pool)
 	progressRepo := postgres.NewProgressRepository(pool)
 
-	user := &models.User{
-		Username: "Ezio Auditore",
-		Email:    "ezio@assassin.com",
-		XP:       0,
-		Level:    1,
+	statsService := stats.NewStatsService(rdb)
+	rewardService := service.NewRewardService(rewardRepo, userRepo, statsService)
+	progressService := service.NewProgressService(progressRepo)
+	notifier, err := grpc.NewNotificationClient(cfg.GRPC.NotificationAddr)
+	if err != nil {
+		log.Fatalf("connect notification service: %v", err)
 	}
-	if _, err := userRepo.Create(ctx, user); err != nil {
-		log.Fatalf("create user: %v", err)
-	}
-	log.Printf("user created with ID %d", user.ID)
+	defer notifier.Close()
+	log.Println("notification service connected")
 
-	quest := &models.Quest{
-		Title: "Title1",
-		Description: "Description",
-		Difficulty: 5,
-		IsActive: true,
-		XPReward: 500,
-	}
-	if _, err := questRepo.Create(ctx, quest); err != nil {
-		log.Fatalf("create quest: %v", err)
-	}
-	log.Printf("quest created with ID %d", quest.ID)
+	questService := service.NewQuestService(
+		questRepo,
+		taskRepo,
+		rewardService,
+		progressService,
+		statsService,
+		notifier,
+	)
 
+	questHandler := handler.NewQuestHandler(questService)
+	leaderboardHandler := handler.NewLeaderboardHandler(statsService)
+	router := handler.NewRouter(questHandler, leaderboardHandler)
 
-	task := &models.Task{
-		QuestID:     quest.ID,
-		Title:       "Complete First Mission",
-		Description: "Finish your first quest objective",
-		IsCompleted: false,
-		XPReward:    100,
+	srv := &http.Server{
+		Addr:    fmt.Sprintf(":%d", cfg.HTTP.Port),
+		Handler: router,
 	}
-	if _, err := taskRepo.Create(ctx, task); err != nil {
-		log.Fatalf("create task: %v", err)
-	}
-	log.Printf("task created with ID %d", task.ID)
 
+	go func() {
+		log.Printf("http server listening on %s", srv.Addr)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("http server: %v", err)
+		}
+	}()
+
+	<-ctx.Done()
+	log.Println("shutdown signal received")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("server shutdown error: %v", err)
+	}
+
+	log.Println("server stopped gracefully")
 }

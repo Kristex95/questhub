@@ -1,151 +1,228 @@
 package service
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/Kristex95/questhub/internal/domain"
+	"github.com/Kristex95/questhub/internal/models"
 	"github.com/Kristex95/questhub/internal/repository"
 )
 
+type statsIncrementer interface {
+	IncrCompletedQuests(ctx context.Context) error
+}
+
 type QuestService struct {
-	quests repository.QuestRepository
-	tasks  repository.TaskRepository
-	users  repository.UserRepository
+	quests   repository.QuestRepository
+	tasks    repository.TaskRepository
+	rewards  *RewardService
+	progress *ProgressService
+	stats    statsIncrementer
+	notifier Notifier
 }
 
-func NewQuestService(quests repository.QuestRepository, tasks repository.TaskRepository, users repository.UserRepository) *QuestService {
+func NewQuestService(
+	quests repository.QuestRepository,
+	tasks repository.TaskRepository,
+	rewards *RewardService,
+	progress *ProgressService,
+	stats statsIncrementer,
+	notifier Notifier,
+) *QuestService {
 	return &QuestService{
-		quests: quests,
-		tasks:  tasks,
-		users:  users,
+		quests:   quests,
+		tasks:    tasks,
+		rewards:  rewards,
+		progress: progress,
+		stats:    stats,
+		notifier: notifier,
 	}
 }
 
-func (service *QuestService) CreateQuest(title, description string, difficulty int) (*domain.Quest, error) {
-	incomingQuest, err := domain.NewQuest(
-		0,
-		title,
-		description,
-		difficulty,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("create quest domain model: %w", err)
+func (s *QuestService) CreateQuest(ctx context.Context, title, description string, difficulty int) (*models.Quest, error) {
+	if len(title) < 3 {
+		return nil, fmt.Errorf("create quest: %w", &domain.ValidationError{
+			Field: "title", Message: "must be at least 3 characters long",
+		})
+	}
+	if description == "" {
+		return nil, fmt.Errorf("create quest: %w", &domain.ValidationError{
+			Field: "description", Message: "must not be empty",
+		})
+	}
+	if difficulty < 1 || difficulty > 10 {
+		return nil, fmt.Errorf("create quest: %w", &domain.ValidationError{
+			Field: "difficulty", Message: "must be between 1 and 10",
+		})
 	}
 
-	resultQuest, err := service.quests.Create(*incomingQuest)
-	if err != nil {
-		return nil, fmt.Errorf("persist quest: %w", err)
+	quest := &models.Quest{
+		Title:       title,
+		Description: description,
+		Difficulty:  difficulty,
+		XPReward:    difficulty * 100,
+		IsActive:    true,
 	}
 
-	return &resultQuest, nil
+	created, err := s.quests.Create(ctx, quest)
+	if err != nil {
+		return nil, fmt.Errorf("create quest: %w", err)
+	}
+
+	return created, nil
 }
 
-func (service *QuestService) GetQuest(id int) (*domain.Quest, error) {
-	quest, err := service.quests.Get(id)
+func (s *QuestService) GetQuest(ctx context.Context, id int64) (*models.Quest, error) {
+	quest, err := s.quests.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("get quest: %w", err)
 	}
-	return &quest, nil
+	return quest, nil
 }
 
-func (service *QuestService) ListQuests() ([]*domain.Quest, error) {
-	quests, err := service.quests.GetAll()
+func (s *QuestService) ListQuests(ctx context.Context) ([]*models.Quest, error) {
+	quests, err := s.quests.GetAll(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("get all quests: %w", err)
+		return nil, fmt.Errorf("list quests: %w", err)
 	}
-
-	result := make([]*domain.Quest, 0, len(quests))
-	for i := range quests {
-		result = append(result, &quests[i])
-	}
-
-	return result, nil
+	return quests, nil
 }
 
-func (service *QuestService) DeleteQuest(id int) error {
-	quest, err := service.quests.Get(id)
-	if err != nil {
-		return fmt.Errorf("get quest: %w", err)
+func (s *QuestService) DeleteQuest(ctx context.Context, id int64) error {
+	if _, err := s.quests.GetByID(ctx, id); err != nil {
+		return fmt.Errorf("delete quest: %w", err)
 	}
 
-	tasks, err := service.tasks.GetByQuestID(quest.ID)
+	tasks, err := s.tasks.GetByQuestID(ctx, id)
 	if err != nil {
-		return fmt.Errorf("get quest tasks: %w", err)
+		return fmt.Errorf("delete quest: %w", err)
 	}
 
-	for _, t := range tasks {
-		if err := service.tasks.Delete(t.ID); err != nil {
-			return fmt.Errorf("delete task: %w", err)
+	for _, task := range tasks {
+		if err := s.tasks.Delete(ctx, task.ID); err != nil {
+			return fmt.Errorf("delete quest: %w", err)
 		}
 	}
 
-	if err := service.quests.Delete(id); err != nil {
+	if err := s.quests.Delete(ctx, id); err != nil {
 		return fmt.Errorf("delete quest: %w", err)
 	}
 
 	return nil
 }
 
-func (service *QuestService) AddTaskToQuest(questID int, title, description string) (*domain.Task, error) {
-	if _, err := service.quests.Get(questID); err != nil {
-		return nil, fmt.Errorf("get quest: %w", err)
+func (s *QuestService) AddTaskToQuest(ctx context.Context, questID int64, title, description string) (*models.Task, error) {
+	if _, err := s.quests.GetByID(ctx, questID); err != nil {
+		return nil, fmt.Errorf("add task to quest: %w", err)
+	}
+	if title == "" {
+		return nil, fmt.Errorf("add task to quest: %w", &domain.ValidationError{
+			Field: "title", Message: "must not be empty",
+		})
 	}
 
-	task := domain.Task{
-		ID:          0,
-		QuestId:     questID,
+	task := &models.Task{
+		QuestID:     questID,
 		Title:       title,
 		Description: description,
 	}
 
-	created, err := service.tasks.Create(task)
+	created, err := s.tasks.Create(ctx, task)
 	if err != nil {
-		return nil, fmt.Errorf("create task: %w", err)
+		return nil, fmt.Errorf("add task to quest: %w", err)
 	}
 
-	return &created, nil
+	return created, nil
 }
 
-func (service *QuestService) GetQuestTasks(questID int) ([]*domain.Task, error) {
-	if _, err := service.quests.Get(questID); err != nil {
-		return nil, fmt.Errorf("get quest: %w", err)
+func (s *QuestService) GetQuestTasks(ctx context.Context, questID int64) ([]*models.Task, error) {
+	if _, err := s.quests.GetByID(ctx, questID); err != nil {
+		return nil, fmt.Errorf("get quest tasks: %w", err)
 	}
-
-	tasks, err := service.tasks.GetByQuestID(questID)
+	tasks, err := s.tasks.GetByQuestID(ctx, questID)
 	if err != nil {
-		return nil, fmt.Errorf("get tasks: %w", err)
+		return nil, fmt.Errorf("get quest tasks: %w", err)
 	}
-
 	return tasks, nil
 }
 
-func (service *QuestService) CompleteQuest(questID, userID int) error {
-	quest, err := service.quests.Get(questID)
+func (s *QuestService) CompleteQuest(ctx context.Context, userID, questID int64) error {
+	quest, err := s.quests.GetByID(ctx, questID)
 	if err != nil {
-		return fmt.Errorf("get quest: %w", err)
+		return fmt.Errorf("complete quest: %w", err)
 	}
 
-	user, err := service.users.Get(userID)
+	tasks, err := s.tasks.GetByQuestID(ctx, questID)
 	if err != nil {
-		return fmt.Errorf("get user: %w", err)
-	}
-
-	tasks, err := service.tasks.GetByQuestID(questID)
-	if err != nil {
-		return fmt.Errorf("get tasks: %w", err)
+		return fmt.Errorf("complete quest: %w", err)
 	}
 
 	for _, task := range tasks {
-		if !task.GetIsCompleted() {
-			return fmt.Errorf("validation error: quest not completed")
+		if !task.IsCompleted {
+			return fmt.Errorf("complete quest: %w", &domain.ValidationError{
+				Field:   "tasks",
+				Message: "not all quest tasks are completed",
+			})
 		}
 	}
 
-	user.AddXP(quest.Difficulty * 100)
-
-	if _, err := service.users.Update(userID, user); err != nil {
-		return fmt.Errorf("update user: %w", err)
+	if _, err := s.rewards.users.GetByID(ctx, userID); err != nil {
+		return fmt.Errorf("complete quest: %w", err)
 	}
 
-	return nil
+	var wg sync.WaitGroup
+	errs := make([]error, 4)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if _, err := s.rewards.GrantQuestRewards(ctx, userID, questID); err != nil {
+			errs[0] = fmt.Errorf("grant rewards: %w", err)
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := s.progress.MarkCompleted(ctx, userID, questID); err != nil {
+			errs[1] = fmt.Errorf("mark progress: %w", err)
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		msg := fmt.Sprintf("Quest #%d completed", questID)
+		if err := s.notifier.Notify(ctx, userID, msg); err != nil {
+			errs[2] = fmt.Errorf("notify: %w", err)
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := s.stats.IncrCompletedQuests(ctx); err != nil {
+			errs[3] = fmt.Errorf("incr stats: %w", err)
+		}
+	}()
+
+	wg.Wait()
+
+	if quest.XPReward > 0 {
+		if err := s.rewards.users.AddXP(ctx, userID, quest.XPReward); err != nil {
+			return fmt.Errorf("complete quest: %w", err)
+		}
+		user, err := s.rewards.users.GetByID(ctx, userID)
+		if err != nil {
+			return fmt.Errorf("complete quest: %w", err)
+		}
+		if err := s.rewards.stats.UpdateLeaderboard(ctx, userID, user.XP); err != nil {
+			return fmt.Errorf("complete quest: %w", err)
+		}
+	}
+
+	return errors.Join(errs...)
 }

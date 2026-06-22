@@ -96,7 +96,7 @@ func (r *QuestRepository) Update(ctx context.Context, quest *models.Quest) error
 		return fmt.Errorf("update quest: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return &domain.NotFoundError{Entity: "Quest", Value: strconv.Itoa(quest.ID)}
+		return &domain.NotFoundError{Entity: "Quest", Value: strconv.FormatInt(quest.ID, 10)}
 	}
 
 	return nil

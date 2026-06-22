@@ -3,7 +3,7 @@ package models
 import "time"
 
 type Quest struct {
-	ID          int       `json:"id"          db:"id"`
+	ID          int64     `json:"id"          db:"id"`
 	Title       string    `json:"title"       db:"title"`
 	Description string    `json:"description" db:"description"`
 	Difficulty  int       `json:"difficulty"  db:"difficulty"`

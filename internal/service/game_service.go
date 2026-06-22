@@ -4,17 +4,35 @@ import (
 	"fmt"
 
 	"github.com/Kristex95/questhub/internal/domain"
-	"github.com/Kristex95/questhub/internal/repository"
 )
 
+type questStore interface {
+	Create(quest domain.Quest) (domain.Quest, error)
+	Get(id int) (domain.Quest, error)
+	Update(id int, quest domain.Quest) (domain.Quest, error)
+}
+
+type taskStore interface {
+	Create(task domain.Task) (domain.Task, error)
+	Get(id int) (domain.Task, error)
+	GetByQuestID(questID int) ([]*domain.Task, error)
+	Update(id int, task domain.Task) (domain.Task, error)
+}
+
+type userStore interface {
+	Create(user domain.User) (domain.User, error)
+	Get(id int) (domain.User, error)
+	Update(id int, user domain.User) (domain.User, error)
+}
+
 type GameService struct {
-	quests       repository.QuestRepository
-	tasks        repository.TaskRepository
-	users        repository.UserRepository
+	quests       questStore
+	tasks        taskStore
+	users        userStore
 	activeQuests map[int]int // userID -> questID
 }
 
-func NewGameService(quests repository.QuestRepository, tasks repository.TaskRepository, users repository.UserRepository) *GameService {
+func NewGameService(quests questStore, tasks taskStore, users userStore) *GameService {
 	return &GameService{
 		quests:       quests,
 		tasks:        tasks,

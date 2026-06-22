@@ -108,7 +108,7 @@ func (r *TaskRepository) Update(ctx context.Context, task *models.Task) error {
 		return fmt.Errorf("update task: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
-		return &domain.NotFoundError{Entity: "Task", Value: strconv.Itoa(task.ID)}
+		return &domain.NotFoundError{Entity: "Task", Value: strconv.FormatInt(task.ID, 10)}
 	}
 
 	return nil
