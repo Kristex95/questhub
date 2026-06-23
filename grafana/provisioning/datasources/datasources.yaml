@@ -1,0 +1,63 @@
+# ============================================================
+# Grafana data sources + кореляція трейс <-> лог
+# ============================================================
+# Тут налаштовано двосторонній перехід:
+#   Jaeger.tracesToLogsV2  -> з трейсу в логи Loki (фільтр за trace_id)
+#   Loki.derivedFields     -> з лога в трейс Jaeger (за полем "trace.id")
+# ============================================================
+apiVersion: 1
+
+datasources:
+  # --- LOKI: логи + перехід у трейс ---
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    isDefault: true
+    jsonData:
+      derivedFields:
+        # Витягуємо trace.id прямо з ECS JSON-рядка і робимо клікабельне
+        # посилання, що відкриває трейс у Jaeger.
+        - name: trace_id
+          # шукаємо "trace.id":"<hex>" в оригінальному рядку лога
+          matcherType: regex
+          matcherRegex: '"trace\.id"\s*:\s*"([a-f0-9]+)"'
+          url: '$${__value.raw}'
+          datasourceUid: jaeger
+          urlDisplayLabel: 'Trace в Jaeger'
+
+  # --- JAEGER: трейси + перехід у логи ---
+  - name: Jaeger
+    uid: jaeger
+    type: jaeger
+    access: proxy
+    url: http://jaeger:16686
+    jsonData:
+      tracesToLogsV2:
+        datasourceUid: loki
+        # фільтруємо логи саме за trace_id поточного спана
+        filterByTraceID: true
+        filterBySpanID: false
+        # додаткові мітки переносимо в запит до Loki
+        tags:
+          - key: service.name
+            value: service
+        customQuery: true
+        query: '{service="questhub"} | json trace_id="trace.id" | trace_id=`$${__trace.traceId}`'
+      # вузли на графі трейсу
+      nodeGraph:
+        enabled: true
+
+  # --- ZIPKIN: альтернативний бекенд трейсів ---
+  - name: Zipkin
+    uid: zipkin
+    type: zipkin
+    access: proxy
+    url: http://zipkin:9411
+    jsonData:
+      tracesToLogsV2:
+        datasourceUid: loki
+        filterByTraceID: true
+        customQuery: true
+        query: '{service="questhub"} | json trace_id="trace.id" | trace_id=`$${__trace.traceId}`'

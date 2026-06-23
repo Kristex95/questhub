@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"log/slog"
 	"strconv"
 	"strings"
 	"testing"
@@ -350,6 +352,7 @@ func (m *MockStatsIncrementer) IncrCompletedQuests(ctx context.Context) error {
 
 type MockNotifier struct{}
 
+
 func (m *MockNotifier) Notify(ctx context.Context, userID int64, message string) error {
 	return nil
 }
@@ -638,6 +641,8 @@ func makeService() (*QuestService, *MockQuestRepository, *MockTaskRepository, *M
 	progressRepo := NewMockProgressRepository()
 	rewardRepo := NewMockRewardRepository()
 
+	discardLogger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
 	questService := NewQuestService(
 		questRepo,
 		taskRepo,
@@ -645,6 +650,7 @@ func makeService() (*QuestService, *MockQuestRepository, *MockTaskRepository, *M
 		NewProgressService(progressRepo),
 		&MockStatsIncrementer{},
 		&MockNotifier{},
+		discardLogger,
 	)
 	return questService, questRepo, taskRepo, userRepo
 }

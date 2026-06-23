@@ -1,0 +1,45 @@
+# OpenTelemetry Collector — приймає трейси по OTLP від QuestHub
+# і віялом розсилає їх ОДНОЧАСНО у Jaeger і Zipkin.
+# Сенс: застосунок інструментується ОДИН раз (OTLP), а куди підуть дані —
+# вирішує Collector. Захотіли ще один бекенд — додали exporter, код не чіпаємо.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 1s
+  # Гарантує, що service.name присутній (Jaeger/Zipkin групують трейси за ним)
+  resource:
+    attributes:
+      - key: service.name
+        value: questhub
+        action: upsert
+
+exporters:
+  # Jaeger тепер приймає нативний OTLP на 4317
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+  # Zipkin має власний формат — окремий exporter
+  zipkin:
+    endpoint: http://zipkin:9411/api/v2/spans
+  # Лог у консоль колектора — зручно для діагностики на занятті
+  debug:
+    verbosity: normal
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [resource, batch]
+      exporters: [otlp/jaeger, zipkin, debug]
+  telemetry:
+    metrics:
+      address: 0.0.0.0:8889

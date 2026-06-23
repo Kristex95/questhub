@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/Kristex95/questhub/internal/domain"
+	"github.com/Kristex95/questhub/internal/logging"
 	"github.com/Kristex95/questhub/internal/models"
 	"github.com/Kristex95/questhub/internal/repository"
 )
@@ -22,6 +25,7 @@ type QuestService struct {
 	progress *ProgressService
 	stats    statsIncrementer
 	notifier Notifier
+	logger   *slog.Logger // Додаємо поле логера в сервіс
 }
 
 func NewQuestService(
@@ -31,6 +35,7 @@ func NewQuestService(
 	progress *ProgressService,
 	stats statsIncrementer,
 	notifier Notifier,
+	logger *slog.Logger, // Приймаємо логер у конструкторі
 ) *QuestService {
 	return &QuestService{
 		quests:   quests,
@@ -39,6 +44,7 @@ func NewQuestService(
 		progress: progress,
 		stats:    stats,
 		notifier: notifier,
+		logger:   logger,
 	}
 }
 
@@ -150,6 +156,9 @@ func (s *QuestService) GetQuestTasks(ctx context.Context, questID int64) ([]*mod
 }
 
 func (s *QuestService) CompleteQuest(ctx context.Context, userID, questID int64) error {
+	start := time.Now()
+	log := logging.LoggerFrom(ctx, s.logger) 
+
 	quest, err := s.quests.GetByID(ctx, questID)
 	if err != nil {
 		return fmt.Errorf("complete quest: %w", err)
@@ -172,6 +181,8 @@ func (s *QuestService) CompleteQuest(ctx context.Context, userID, questID int64)
 	if _, err := s.rewards.users.GetByID(ctx, userID); err != nil {
 		return fmt.Errorf("complete quest: %w", err)
 	}
+
+	log.Info("completing quest", slog.Int64("quest_id", questID))
 
 	var wg sync.WaitGroup
 	errs := make([]error, 4)
@@ -215,6 +226,13 @@ func (s *QuestService) CompleteQuest(ctx context.Context, userID, questID int64)
 		if err := s.rewards.users.AddXP(ctx, userID, quest.XPReward); err != nil {
 			return fmt.Errorf("complete quest: %w", err)
 		}
+		
+		// Лог 2 з ТЗ: Нагороду видано (додаємо поінти/XP)
+		log.Info("reward granted", 
+			slog.Int64("quest_id", questID), 
+			slog.Int("points", quest.XPReward),
+		)
+
 		user, err := s.rewards.users.GetByID(ctx, userID)
 		if err != nil {
 			return fmt.Errorf("complete quest: %w", err)
@@ -223,6 +241,12 @@ func (s *QuestService) CompleteQuest(ctx context.Context, userID, questID int64)
 			return fmt.Errorf("complete quest: %w", err)
 		}
 	}
+
+	// Лог 3 з ТЗ: Квест успішно завершено та зафіксовано час
+	log.Info("quest completed", 
+		slog.Int64("quest_id", questID), 
+		slog.Duration("took", time.Since(start)),
+	)
 
 	return errors.Join(errs...)
 }

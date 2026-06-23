@@ -5,8 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
+	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -14,6 +17,8 @@ import (
 	"github.com/Kristex95/questhub/internal/config"
 	"github.com/Kristex95/questhub/internal/database"
 	"github.com/Kristex95/questhub/internal/handler"
+	"github.com/Kristex95/questhub/internal/logging"
+	"github.com/Kristex95/questhub/internal/observability"
 	"github.com/Kristex95/questhub/internal/repository/cache"
 	"github.com/Kristex95/questhub/internal/repository/postgres"
 	"github.com/Kristex95/questhub/internal/repository/stats"
@@ -30,24 +35,57 @@ func main() {
 		log.Fatalf("load config: %v", err)
 	}
 
-	pool, err := database.NewPostgresPool(ctx, cfg.Postgres.DSN())
+	logger, err := logging.New(cfg.Logging.Level, cfg.Logging.Format, cfg.Logging.File)
 	if err != nil {
-		log.Fatalf("connect postgres: %v", err)
+		log.Fatalf("init logger: %v", err)
+	}
+
+	logger.Info("starting QuestHub",
+		slog.String("env", cfg.Env),
+		slog.String("port", strconv.Itoa(cfg.HTTP.Port)),
+	)
+
+	shutdownTracing, err := observability.InitTracing(ctx, cfg.Observability.OTLPEndpoint, cfg.Observability.ServiceName)
+	if err != nil {
+		logger.Error("init tracing failed", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+	defer func() {
+		if err := shutdownTracing(context.Background()); err != nil {
+			logger.Error("tracing shutdown error", slog.String("error", err.Error()))
+		}
+	}()
+
+	pool, err := database.NewPostgresPool(ctx, cfg.Postgres.DSN(), cfg.Postgres.MaxConns)
+	if err != nil {
+		logger.Error("connect postgres failed", slog.String("error", err.Error()))
+		os.Exit(1)
 	}
 	defer pool.Close()
-	log.Println("postgres connected")
+	logger.Info("postgres connected")
 
-	rdb, err := rediscache.NewRedisClient(ctx, cfg.Redis)
+	rdb, err := rediscache.NewRedisClient(ctx, rediscache.RedisConfig{
+		Addr:     cfg.Redis.Addr,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
+	})
 	if err != nil {
-		log.Fatalf("connect redis: %v", err)
+		logger.Error("connect redis failed", slog.String("error", err.Error()))
+		os.Exit(1)
 	}
 	defer rdb.Close()
-	log.Println("redis connected")
+	logger.Info("redis connected")
+
+	questTTL, err := cfg.CacheQuestTTLDuration()
+	if err != nil {
+		logger.Error("invalid cache quest ttl", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
 
 	questRepo := cache.NewCachedQuestRepository(
 		postgres.NewQuestRepository(pool),
 		rdb,
-		cfg.Cache.QuestTTL,
+		questTTL,
 	)
 	taskRepo := postgres.NewTaskRepository(pool)
 	userRepo := postgres.NewUserRepository(pool)
@@ -59,10 +97,11 @@ func main() {
 	progressService := service.NewProgressService(progressRepo)
 	notifier, err := grpc.NewNotificationClient(cfg.GRPC.NotificationAddr)
 	if err != nil {
-		log.Fatalf("connect notification service: %v", err)
+		logger.Error("connect notification service failed", slog.String("error", err.Error()))
+		os.Exit(1)
 	}
 	defer notifier.Close()
-	log.Println("notification service connected")
+	logger.Info("notification service connected")
 
 	questService := service.NewQuestService(
 		questRepo,
@@ -71,33 +110,41 @@ func main() {
 		progressService,
 		statsService,
 		notifier,
+		logger,
 	)
 
-	questHandler := handler.NewQuestHandler(questService)
+	questHandler := handler.NewQuestHandler(questService, logger)
 	leaderboardHandler := handler.NewLeaderboardHandler(statsService)
-	router := handler.NewRouter(questHandler, leaderboardHandler)
+	router := handler.NewRouter(cfg.Observability.ServiceName, logger, pool, questHandler, leaderboardHandler)
 
 	srv := &http.Server{
-		Addr:    fmt.Sprintf(":%d", cfg.HTTP.Port),
+		Addr:    fmt.Sprintf("%s:%s", cfg.HTTP.Host, strconv.Itoa(cfg.HTTP.Port)),
 		Handler: router,
 	}
 
 	go func() {
-		log.Printf("http server listening on %s", srv.Addr)
+		logger.Info("http server listening", slog.String("addr", srv.Addr))
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("http server: %v", err)
+			logger.Error("http server failed", slog.String("error", err.Error()))
+			os.Exit(1)
 		}
 	}()
 
 	<-ctx.Done()
-	log.Println("shutdown signal received")
+	logger.Info("shutdown signal received")
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownTimeout, err := cfg.ShutdownTimeoutDuration()
+	if err != nil {
+		logger.Error("invalid shutdown timeout", slog.String("error", err.Error()))
+		shutdownTimeout = 15 * time.Second
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Printf("server shutdown error: %v", err)
+		logger.Error("server shutdown error", slog.String("error", err.Error()))
 	}
 
-	log.Println("server stopped gracefully")
+	logger.Info("server stopped gracefully")
 }

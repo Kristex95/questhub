@@ -9,16 +9,35 @@ import (
 )
 
 type Config struct {
-	Env      string         `mapstructure:"env"`
-	HTTP     HTTPConfig     `mapstructure:"http"`
-	Postgres PostgresConfig `mapstructure:"postgres"`
-	Redis    RedisConfig    `mapstructure:"redis"`
-	Cache    CacheConfig    `mapstructure:"cache"`
-	GRPC     GRPCConfig     `mapstructure:"grpc"`
+	App 			App 			    `mapstructure:"app"`
+	Env            	string              `mapstructure:"env"`
+	HTTP           	HTTPConfig          `mapstructure:"http"`
+	Postgres       	PostgresConfig      `mapstructure:"postgres"`
+	Redis          	RedisConfig         `mapstructure:"redis"`
+	Cache          	CacheConfig         `mapstructure:"cache"`
+	GRPC           	GRPCConfig          `mapstructure:"grpc"`
+	Logging        	Logging             `mapstructure:"logging"`
+	Observability  	ObservabilityConfig `mapstructure:"observability"`
+}
+
+type App struct{
+	ShutdownTimeout string `mapstructure:"shutdown_timeout"`
+}
+
+type Logging struct {
+	File   string `mapstructure:"file"`
+	Level  string `mapstructure:"level"`
+	Format string `mapstructure:"format"`
+}
+
+type ObservabilityConfig struct {
+	OTLPEndpoint string `mapstructure:"otlp_endpoint"`
+	ServiceName  string `mapstructure:"service_name"`
 }
 
 type HTTPConfig struct {
-	Port int `mapstructure:"port"`
+	Host string `mapstructure:"host"`
+	Port int 	`mapstructure:"port"`
 }
 
 type PostgresConfig struct {
@@ -28,6 +47,7 @@ type PostgresConfig struct {
 	Password string `mapstructure:"password"`
 	DBName   string `mapstructure:"dbname"`
 	SSLMode  string `mapstructure:"sslmode"`
+	MaxConns int 	`mapstructure:"max_conns"`
 }
 
 type RedisConfig struct {
@@ -73,4 +93,12 @@ func Load() (*Config, error) {
 	}
 
 	return &cfg, nil
+}
+
+func (c *Config) ShutdownTimeoutDuration() (time.Duration, error) {
+	return time.ParseDuration(c.App.ShutdownTimeout)
+}
+
+func (c *Config) CacheQuestTTLDuration() (time.Duration, error) {
+	return time.ParseDuration(c.Cache.QuestTTL.String())
 }

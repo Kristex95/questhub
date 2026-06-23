@@ -1,3 +1,19 @@
+# Трейси:  застосунок --OTLP--> OpenTelemetry Collector --> Jaeger + Zipkin
+# Логи:    застосунок --ECS JSON--> файл ./logs/*.log --> Promtail --> Loki
+# Перегляд: усе в одному вікні Grafana (Jaeger + Zipkin + Loki)
+#
+# Кореляція трейс <-> лог налаштована в Grafana:
+#   - з трейсу в Jaeger -> кнопка "Logs for this span" відкриває Loki
+#     відфільтрований за trace.id
+#   - з рядка лога в Loki -> derived field "trace.id" -> посилання
+#     відкриває трейс у Jaeger
+#
+# Запуск:   docker compose up -d
+# Grafana:  http://localhost:3000   (admin / admin)
+# Jaeger:   http://localhost:16686
+# Zipkin:   http://localhost:9411
+# ============================================================
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -22,5 +38,94 @@ services:
     ports:
       - "${REDIS_PORT}:6379"
 
+  # --- OpenTelemetry Collector: приймає OTLP, віддає в Jaeger і Zipkin ---
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.111.0
+    container_name: questhub-otel-collector
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./otel-collector/config.yaml:/etc/otel/config.yaml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC  <- сюди шле застосунок
+      - "4318:4318"   # OTLP HTTP  <- альтернатива для застосунку
+      - "8889:8889"   # Prometheus-метрики самого колектора (необов'язково)
+    depends_on:
+      - jaeger
+      - zipkin
+    networks:
+      - observability
+
+  # --- Jaeger: бекенд і UI для трейсів ---
+  jaeger:
+    image: jaegertracing/all-in-one:1.62.0
+    container_name: questhub-jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"   # Jaeger UI
+      # 4317/4318 Jaeger слухає всередині мережі — їх займає Collector назовні
+    networks:
+      - observability
+
+  # --- Zipkin: альтернативний бекенд і UI для трейсів ---
+  zipkin:
+    image: openzipkin/zipkin:3.4
+    container_name: questhub-zipkin
+    ports:
+      - "9411:9411"     # Zipkin UI + API приймання спанів
+    networks:
+      - observability
+
+  # --- Loki: сховище логів ---
+  loki:
+    image: grafana/loki:3.2.1
+    container_name: questhub-loki
+    command: ["-config.file=/etc/loki/loki-config.yaml", "-target=all"]
+    volumes:
+      - ./loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+    ports:
+      - "3100:3100"
+    networks:
+      - observability
+
+  # --- Promtail: читає ECS-логи застосунку й відправляє в Loki ---
+  promtail:
+    image: grafana/promtail:3.2.1
+    container_name: questhub-promtail
+    command: ["-config.file=/etc/promtail/promtail-config.yaml"]
+    volumes:
+      - ./promtail/promtail-config.yaml:/etc/promtail/promtail-config.yaml:ro
+      - ./logs:/var/log/questhub:ro          # сюди застосунок пише ECS JSON-логи
+    depends_on:
+      - loki
+    networks:
+      - observability
+
+  # --- Grafana: єдине вікно — трейси (Jaeger/Zipkin) + логи (Loki) ---
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: questhub-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      # вмикає кнопку переходу трейс -> логи у вбудованому Explore
+      GF_FEATURE_TOGGLES_ENABLE: traceToMetrics
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - loki
+      - jaeger
+      - zipkin
+    networks:
+      - observability
+
 volumes:
   questhub_pgdata:
+
+networks:
+  observability:
+    driver: bridge

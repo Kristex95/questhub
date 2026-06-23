@@ -1,0 +1,42 @@
+# Promtail - читає ECS JSON-логи QuestHub з ./logs/*.log і шле в Loki.
+#
+# Важливо: ми НЕ перетворюємо рядок лога - Loki зберігає оригінальний
+# ECS JSON. Поле trace.id витягуємо в pipeline лише для зручного
+# фільтрування; для переходу лог -> трейс Grafana парсить сам рядок (derived field).
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: warn
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: questhub
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: questhub
+          service: questhub
+          __path__: /var/log/questhub/*.log
+    pipeline_stages:
+      # 1) розбираємо ECS JSON, дістаємо потрібні поля
+      - json:
+          expressions:
+            level: '"log.level"'
+            trace_id: '"trace.id"'
+            ts: '"@timestamp"'
+      # 2) рівень лога робимо міткою (low-cardinality — безпечно)
+      - labels:
+          level:
+      # 3) trace.id у structured metadata (НЕ мітка — high-cardinality!)
+      - structured_metadata:
+          trace_id:
+      # 4) час події беремо з самого лога
+      - timestamp:
+          source: ts
+          format: RFC3339Nano

@@ -1,6 +1,10 @@
 env: "local"
 
+app:
+  shutdown_timeout: "15s"
+
 http:
+  host: localhost
   port: 8080
 
 postgres:
@@ -10,9 +14,10 @@ postgres:
   password: postgres
   dbname: questhub
   sslmode: disable
+  max_conns: 25
 
 redis:
-  addr: "localhost:6379"
+  addr: "localhost:6380"
   password: ""
   db: 0
 
@@ -21,3 +26,12 @@ cache:
   
 grpc:
   notification_addr: "localhost:50051"
+
+logging:
+  file: "./logs/questhub.log"
+  level: "info"
+  format: "ecs"
+
+observability:
+  otlp_endpoint: "localhost:4317"
+  service_name: "questhub"
